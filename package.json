@@ -1,9 +1,30 @@
 {
+  "name": "agronomist-studio-monorepo",
+  "version": "1.0.0",
+  "private": true,
   "engines": {
     "node": ">=24.15.0"
   },
+  "workspaces": [
+    "AgronomistStudio",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm run start --workspace=AgronomistStudio",
+    "dev:api": "npm run dev --workspace=server",
+    "build:web": "npm run build --workspace=AgronomistStudio",
+    "test:web": "npm run test --workspace=AgronomistStudio"
+  },
+  "overrides": {
+    "@ngrx/signals": {
+      "@angular/core": "22.0.0"
+    }
+  },
   "devDependencies": {
     "autoprefixer": "^10.5.0",
+    "concurrently": "^8.2.2",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0"
   }

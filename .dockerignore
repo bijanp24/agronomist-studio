@@ -1,0 +1,11 @@
+# .dockerignore
+**/node_modules
+**/dist
+**/.angular
+**/.git
+**/.git*
+**/.vscode
+**/.netlify
+npm-debug.log
+**/TODO.md
+**/README.md
