@@ -1,0 +1,398 @@
+<div class="p-6 space-y-6 max-w-7xl mx-auto animate-fade-in">
+
+  <!-- Header Section -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
+        Nutrient Budgets & Mineral Analytics
+      </h1>
+      <p class="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+        Monitor lab soil chemistry, diagnostic tissue assays, and manage California Nitrogen Management Plans (NMP)
+      </p>
+    </div>
+
+    <button 
+      (click)="openAddSampleModal()"
+      class="px-4 py-2.5 bg-ag-green-600 hover:bg-ag-green-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-2 cursor-pointer shrink-0"
+    >
+      <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Log Lab Result
+    </button>
+  </div>
+
+  @if (loading()) {
+    <!-- Skeletons loading metrics and lists -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+      <div class="lg:col-span-2 space-y-4">
+        <app-skeleton type="text" />
+      </div>
+      <div class="space-y-4">
+        <app-skeleton type="text" />
+      </div>
+    </div>
+
+  } @else {
+
+    <!-- 1. Stats Summary Bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <app-stat-card 
+        label="NMP Nitrogen Budget Average" 
+        [value]="avgNitrogenBudgetValue()" 
+        trend="lbs N / Acre Average"
+        trendType="neutral"
+        description="NMP Nitrogen budget target"
+        color="zinc"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v17.792m0-17.792a9.003 9.003 0 0 0-7.5 8.896H9.75m0-8.896a9.003 9.003 0 0 1 7.5 8.896H9.75m0 0H21.25M9.75 20.896H21.25" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Mineral Deficiencies" 
+        [value]="deficientSamplesValue()" 
+        trend="Requires Foliar Nutrition"
+        [trendType]="deficientSamplesCount() > 0 ? 'down' : 'neutral'"
+        description="Critical tissue samples flagged"
+        color="gold"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.03V3m0 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 0v1.5M12 15.75h.008v.008H12v-.008Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Low Soil Nitrogen Blocks" 
+        [value]="lowSoilNValue()" 
+        trend="Side-dress application needed"
+        [trendType]="lowSoilNCount() > 0 ? 'down' : 'neutral'"
+        description="Fields below 10ppm nitrate"
+        color="earth"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.03V3m0 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 0v1.5M12 15.75h.008v.008H12v-.008Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Total Lab Assays" 
+        [value]="totalAssaysValue()" 
+        [trend]="activeFieldsCoverageTrend()"
+        trendType="neutral"
+        description="Soil & tissue samples filed"
+        color="green"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" />
+        </svg>
+      </app-stat-card>
+    </div>
+
+    <!-- 2. Dual Workspace Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- Left Column: Soil and Tissue Data Tables -->
+      <div class="lg:col-span-8 space-y-6">
+        
+        <!-- Section: Soil Mineral Analysis -->
+        <app-data-table 
+          title="Laboratory Soil Chemistry Reports" 
+          subtitle="Direct cores measuring nitrate, phosphate, potash, organic matter and pH indexes"
+          [columns]="soilColumns"
+          [data]="formattedSoilSamples()"
+          [cellTemplateSlot]="soilCellTpl"
+        />
+
+        <ng-template #soilCellTpl let-row let-column="column" let-value="value">
+          @if (column.key === 'fieldName') {
+            <div>
+              <span class="font-bold text-zinc-900 dark:text-white block">{{ row.fieldName }}</span>
+              <span class="text-xs text-zinc-400 block mt-0.5">Lab Ref: {{ row.labSampleNumber }}</span>
+            </div>
+          } @else if (column.key === 'sampleDate') {
+            <span class="text-zinc-600 dark:text-zinc-400 font-medium block text-xs">
+              {{ value | date:'mediumDate' }}
+            </span>
+          } @else if (column.key === 'nitrogenPpm') {
+            <span class="font-bold" [class.text-amber-600]="value < 10" [class.text-zinc-800]="value >= 10" [class.dark:text-zinc-200]="value >= 10">
+              {{ value }} ppm
+            </span>
+          } @else if (column.key === 'phosphorusPpm' || column.key === 'potassiumPpm') {
+            <span class="font-semibold text-zinc-700 dark:text-zinc-300">{{ value }} ppm</span>
+          } @else if (column.key === 'organicMatterPct') {
+            <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ value }}%</span>
+          } @else if (column.key === 'ph') {
+            <span class="font-extrabold text-ag-green-600 dark:text-ag-green-400">{{ value }} pH</span>
+          } @else if (column.key === 'status') {
+            <app-badge [type]="value === 'optimal' ? 'success' : 'warning'">
+              {{ value }}
+            </app-badge>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+
+        <!-- Section: Crop Tissue Analysis -->
+        <app-data-table 
+          title="Foliar Crop Tissue Diagnostics" 
+          subtitle="Visual leaf mineral extracts flagging deficiencies during critical physiological cycles"
+          [columns]="tissueColumns"
+          [data]="formattedTissueSamples()"
+          [cellTemplateSlot]="tissueCellTpl"
+        />
+
+        <ng-template #tissueCellTpl let-row let-column="column" let-value="value">
+          @if (column.key === 'fieldName') {
+            <div>
+              <span class="font-bold text-zinc-900 dark:text-white block">{{ row.fieldName }}</span>
+              <span class="text-xs text-zinc-400 block mt-0.5">{{ row.crop }}</span>
+            </div>
+          } @else if (column.key === 'sampleDate') {
+            <span class="text-zinc-600 dark:text-zinc-400 font-medium block text-xs">
+              {{ value | date:'mediumDate' }}
+            </span>
+          } @else if (column.key === 'nitrogenPct' || column.key === 'phosphorusPct' || column.key === 'potassiumPct') {
+            <span class="font-semibold text-zinc-700 dark:text-zinc-300">{{ value }}%</span>
+          } @else if (column.key === 'zincPpm') {
+            <span class="font-bold text-zinc-800 dark:text-zinc-200">{{ value }} ppm</span>
+          } @else if (column.key === 'status') {
+            <app-badge [type]="value === 'adequate' ? 'success' : (value === 'deficient' ? 'danger' : 'warning')">
+              {{ value }}
+            </app-badge>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+
+      </div>
+
+      <!-- Right Column: California Nitrogen Management Plan (NMP) Budget Panel -->
+      <div class="lg:col-span-4 space-y-6">
+        
+        <div class="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
+          <div class="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/15 flex justify-between items-center">
+            <div>
+              <h3 class="font-bold text-zinc-900 dark:text-white text-sm">CA Nitrogen Budgets (NMP)</h3>
+              <p class="text-[10px] text-zinc-400 mt-0.5">Water Board compliance & credit balancing tool</p>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 rounded border border-emerald-100 dark:border-emerald-900">
+              CDFA Validated
+            </span>
+          </div>
+
+          <div class="p-4 space-y-5">
+            @if (formattedNitrogenPlans().length === 0) {
+              <div class="text-center text-zinc-400 text-xs py-8">No registered NMP nitrogen budgets.</div>
+            } @else {
+              @for (plan of formattedNitrogenPlans(); track plan.id) {
+                <div class="bg-zinc-50 border border-zinc-100 dark:bg-zinc-950/35 dark:border-zinc-800 rounded-xl p-4.5 space-y-4 shadow-3xs hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors">
+                  
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h4 class="font-extrabold text-zinc-900 dark:text-white text-sm">{{ plan.fieldName }}</h4>
+                      <span class="text-[10px] text-zinc-400 font-bold block mt-0.5">Crop Year {{ plan.cropYear }} &bull; Goal: {{ plan.yieldGoalTonsPerAcre }} Tons/ac</span>
+                    </div>
+
+                    <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white border border-zinc-250 dark:bg-zinc-900 dark:border-zinc-800 px-2 py-1 rounded-lg">
+                      {{ Math.round((plan.appliedN_lbsPerAcre / plan.budgetedN_lbsPerAcre) * 100) }}% Cap
+                    </span>
+                  </div>
+
+                  <!-- Progress Bar -->
+                  <div>
+                    <div class="flex justify-between text-[11px] font-semibold text-zinc-500 mb-1">
+                      <span>Applied: {{ plan.appliedN_lbsPerAcre }} lbs/ac</span>
+                      <span>Budget Limit: {{ plan.budgetedN_lbsPerAcre }} lbs/ac</span>
+                    </div>
+                    <div class="w-full bg-zinc-200 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                      <div class="bg-ag-green-600 h-full rounded-full transition-all duration-500 animate-pulse" [style.width.%]="Math.min((plan.appliedN_lbsPerAcre / plan.budgetedN_lbsPerAcre) * 100, 100)"></div>
+                    </div>
+                  </div>
+
+                  <!-- Credits Breakdown Grid -->
+                  <div class="grid grid-cols-2 gap-2 text-[10px] leading-relaxed pt-1.5 text-zinc-500">
+                    <div class="p-2 bg-white dark:bg-zinc-900 border border-zinc-150/40 dark:border-zinc-850 rounded-lg">
+                      <span class="text-zinc-400 font-medium block">Residual Soil Credits:</span>
+                      <span class="font-bold text-zinc-800 dark:text-zinc-200 mt-0.5 block">{{ plan.creditsResidualN_lbsPerAcre }} lbs/ac</span>
+                    </div>
+                    <div class="p-2 bg-white dark:bg-zinc-900 border border-zinc-150/40 dark:border-zinc-850 rounded-lg">
+                      <span class="text-zinc-400 font-medium block">Organic Compost Credits:</span>
+                      <span class="font-bold text-zinc-800 dark:text-zinc-200 mt-0.5 block">{{ plan.organicN_lbsPerAcre }} lbs/ac</span>
+                    </div>
+                    <div class="p-2 bg-white dark:bg-zinc-900 border border-zinc-150/40 dark:border-zinc-850 rounded-lg">
+                      <span class="text-zinc-400 font-medium block">Irrigation Nitrate Credits:</span>
+                      <span class="font-bold text-zinc-800 dark:text-zinc-200 mt-0.5 block">{{ plan.irrigationN_lbsPerAcre }} lbs/ac</span>
+                    </div>
+                    <div class="p-2 bg-white dark:bg-zinc-900 border border-zinc-150/40 dark:border-zinc-850 rounded-lg">
+                      <span class="text-zinc-400 font-medium block">Net Season Fertilization:</span>
+                      <span class="font-extrabold text-ag-green-600 dark:text-ag-green-400 mt-0.5 block">
+                        {{ plan.appliedN_lbsPerAcre + plan.organicN_lbsPerAcre + plan.irrigationN_lbsPerAcre - plan.creditsResidualN_lbsPerAcre }} lbs/ac
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Interactive Credit Balancer slider -->
+                  <div class="border-t border-zinc-150/30 dark:border-zinc-800 pt-3 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                      <span class="text-zinc-400 font-bold uppercase tracking-wider text-[10px]">Simulate Soil Credits</span>
+                      <span class="font-extrabold text-zinc-900 dark:text-white">{{ plan.creditsResidualN_lbsPerAcre }} lbs/ac</span>
+                    </div>
+
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      step="5"
+                      [value]="plan.creditsResidualN_lbsPerAcre"
+                      (input)="onCreditSlide(plan, $event)"
+                      class="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-ag-green-600 dark:bg-zinc-800"
+                    >
+                    <span class="block text-[9px] text-zinc-400 leading-relaxed italic text-center">* Adjusting credit values balances nitrogen targets to prevent deep groundwater leaching.</span>
+                  </div>
+
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  }
+
+</div>
+
+<!-- Log Lab Result modal drawer -->
+<app-modal 
+  [isOpen]="isModalOpen()" 
+  title="Log Mineral Laboratory Result" 
+  subtitle="Complete CDFA fertilizer and soil core compliance standards"
+  (closed)="closeAddSampleModal()"
+>
+  <form [formGroup]="nutrientForm" (ngSubmit)="submitSampleForm()" class="space-y-4">
+    
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Select Field Block</label>
+        <select 
+          formControlName="fieldId"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <option value="">-- Choose Field block --</option>
+          @for (f of fieldStore.fields(); track f.id) {
+            <option [value]="f.id">{{ f.name }} ({{ f.crop }})</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Sample Category</label>
+        <select 
+          formControlName="category"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <option value="soil">Soil core core</option>
+          <option value="tissue">Foliar leaf Tissue</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Mineral Lab Sample ID</label>
+        <input 
+          type="text" 
+          formControlName="labSampleNumber"
+          placeholder="e.g. LAB-KERN-9912"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Collection Date</label>
+        <input 
+          type="date" 
+          formControlName="sampleDate"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+    </div>
+
+    <div class="border border-zinc-150 rounded-xl p-4 space-y-3.5 dark:border-zinc-800 bg-zinc-50/20">
+      <span class="block text-xs font-extrabold text-zinc-800 dark:text-zinc-200">Mineral concentration indicators</span>
+      
+      @if (nutrientForm.get('category')?.value === 'soil') {
+        <!-- Soil Minerals Inputs -->
+        <div class="grid grid-cols-3 gap-2.5 text-xs">
+          <div>
+            <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Nitrogen (PPM)</label>
+            <input type="number" formControlName="soilN" class="w-full border border-zinc-200 rounded px-2 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Phosphorus (PPM)</label>
+            <input type="number" formControlName="soilP" class="w-full border border-zinc-200 rounded px-2 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Potassium (PPM)</label>
+            <input type="number" formControlName="soilK" class="w-full border border-zinc-200 rounded px-2 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 text-xs pt-1">
+          <div>
+            <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Organic Matter %</label>
+            <input type="number" step="0.1" formControlName="soilOM" class="w-full border border-zinc-200 rounded px-2 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Soil pH value</label>
+            <input type="number" step="0.1" formControlName="soilPh" class="w-full border border-zinc-200 rounded px-2 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+          </div>
+        </div>
+
+      } @else {
+        <!-- Tissue Minerals Inputs -->
+        <div class="grid grid-cols-3 gap-2.5 text-xs">
+          <div>
+            <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Nitrogen (%)</label>
+            <input type="number" step="0.1" formControlName="tissueN" class="w-full border border-zinc-200 rounded px-2 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Phosphorus (%)</label>
+            <input type="number" step="0.01" formControlName="tissueP" class="w-full border border-zinc-200 rounded px-2 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Potassium (%)</label>
+            <input type="number" step="0.1" formControlName="tissueK" class="w-full border border-zinc-200 rounded px-2 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+          </div>
+        </div>
+
+        <div class="text-xs pt-1.5 max-w-xs">
+          <label class="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mb-1">Zinc Concentration (PPM)</label>
+          <input type="number" formControlName="tissueZn" class="w-full border border-zinc-200 rounded px-2.5 py-1.5 bg-white focus:outline-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
+        </div>
+      }
+    </div>
+
+    <div actions class="flex items-center gap-2">
+      <button 
+        type="submit"
+        [disabled]="nutrientForm.invalid"
+        class="px-4 py-2 text-sm font-bold text-white bg-ag-green-600 hover:bg-ag-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-1.5 cursor-pointer"
+      >
+        File Lab Result
+      </button>
+    </div>
+
+  </form>
+</app-modal>
