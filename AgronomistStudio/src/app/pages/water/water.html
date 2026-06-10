@@ -1,0 +1,376 @@
+<div class="p-6 space-y-6 max-w-7xl mx-auto animate-fade-in">
+
+  <!-- Header Section -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
+        Water Resource & Irrigation Management
+      </h1>
+      <p class="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+        Monitor reference ET, soil moisture profiles, and schedule drip/pivot irrigation operations
+      </p>
+    </div>
+
+    <button 
+      (click)="openScheduleModal()"
+      class="px-4 py-2.5 bg-ag-water-600 hover:bg-ag-water-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors dark:bg-ag-water-700 dark:hover:bg-ag-water-800 flex items-center gap-2 cursor-pointer shrink-0"
+    >
+      <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Schedule Irrigation
+    </button>
+  </div>
+
+  @if (loading()) {
+    <!-- Skeletons loading metrics and lists -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+      <div class="lg:col-span-2 space-y-4">
+        <app-skeleton type="text" />
+      </div>
+      <div class="space-y-4">
+        <app-skeleton type="text" />
+      </div>
+    </div>
+
+  } @else {
+
+    <!-- 1. Stats Summary Bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <app-stat-card 
+        label="Cumulative Water Applied" 
+        [value]="totalWaterAppliedValue()" 
+        [trend]="totalWaterAppliedTrend()"
+        trendType="neutral"
+        description="Total irrigation volume pumped"
+        color="water"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Reference ETo (CIMIS)" 
+        [value]="dailyEtoAverageValue()" 
+        trend="Weekly Peak"
+        trendType="neutral"
+        description="Atmospheric moisture loss index"
+        color="zinc"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5m0 15V21m-9-9h1.5m15 0H21m-1.5-1.5l-1.062-1.061m-12.008 12.02l-1.061-1.06m2.122-12.02l1.06-1.06m12.008 12.02l1.061-1.06M12 8.25a4.25 4.25 0 1 0 0 8.5 4.25 4.25 0 0 0 0-8.5Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Soil Moisture Average" 
+        [value]="soilMoistureAverageValue()" 
+        [trend]="soilMoistureTrend()"
+        [trendType]="soilMoistureAverage() < 22 ? 'down' : 'neutral'"
+        description="Consolidated probe readings"
+        color="green"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 0 1 3 18.75v-5.625ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Active Schedules" 
+        [value]="activeIrrigationsValue()" 
+        [trend]="scheduledVolumeTrend()"
+        trendType="neutral"
+        description="Active or queued runs"
+        color="gold"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+      </app-stat-card>
+    </div>
+
+    <!-- 2. Charts and Data Table Workspace -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- Charts Column -->
+      <div class="lg:col-span-4 space-y-6">
+        
+        <!-- Soil Moisture Depth Profile (Interactive Sensor Telemetry) -->
+        <div class="bg-white border border-zinc-200 rounded-xl shadow-sm p-5 dark:bg-zinc-900 dark:border-zinc-800 space-y-5">
+          <div>
+            <h3 class="font-bold text-zinc-900 dark:text-white text-sm">Moisture Probe Depth Profile</h3>
+            <p class="text-[10px] text-zinc-400 mt-0.5">Multi-depth capacitive sensors &bull; Root zone activity</p>
+          </div>
+
+          <!-- Selection dropdown for target field -->
+          <div>
+            <select 
+              [value]="selectedMoistureFieldId()" 
+              (change)="onMoistureFieldChange($event)"
+              class="w-full text-xs font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
+            >
+              @for (f of fieldStore.fields(); track f.id) {
+                <option [value]="f.id">{{ f.name }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- Sensor Visual representation of root depth profile -->
+          @if (activeMoistureReading(); as probe) {
+            <div class="space-y-4">
+              
+              <!-- Depth 8" -->
+              <div class="space-y-1">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="text-zinc-400 font-semibold flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                    Shallow Zone (8" Depth)
+                  </span>
+                  <span class="font-extrabold text-zinc-800 dark:text-white">{{ probe.depth8InchesPct }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                  <div class="bg-sky-500 h-full rounded-full transition-all duration-500" [style.width.%]="probe.depth8InchesPct * 2.5"></div>
+                </div>
+              </div>
+
+              <!-- Depth 16" -->
+              <div class="space-y-1">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="text-zinc-400 font-semibold flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    Active Root Zone (16" Depth)
+                  </span>
+                  <span class="font-extrabold text-zinc-800 dark:text-white">{{ probe.depth16InchesPct }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                  <div class="bg-blue-600 h-full rounded-full transition-all duration-500" [style.width.%]="probe.depth16InchesPct * 2.5"></div>
+                </div>
+              </div>
+
+              <!-- Depth 32" -->
+              <div class="space-y-1">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="text-zinc-400 font-semibold flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                    Deep Subsoil (32" Depth)
+                  </span>
+                  <span class="font-extrabold text-zinc-800 dark:text-white">{{ probe.depth32InchesPct }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                  <div class="bg-indigo-600 h-full rounded-full transition-all duration-500" [style.width.%]="probe.depth32InchesPct * 2.5"></div>
+                </div>
+              </div>
+
+              <div class="border-t border-zinc-100 dark:border-zinc-800 pt-3 flex justify-between items-center text-xs">
+                <span class="text-zinc-400 font-semibold">Average Moisture Profile</span>
+                <app-badge [type]="probe.averagePct < 20 ? 'danger' : (probe.averagePct < 25 ? 'warning' : 'success')">
+                  {{ probe.averagePct }}% avg
+                </app-badge>
+              </div>
+
+            </div>
+          } @else {
+            <div class="text-center text-zinc-400 text-xs py-8">
+              No active soil probe telemetry configured for selected field.
+            </div>
+          }
+
+        </div>
+
+        <!-- 7-day Atmospheric Water Deficit (Evapotranspiration curve) -->
+        <div class="bg-white border border-zinc-200 rounded-xl shadow-sm p-5 dark:bg-zinc-900 dark:border-zinc-800 space-y-4">
+          <div>
+            <h3 class="font-bold text-zinc-900 dark:text-white text-sm">Atmospheric Water Deficit</h3>
+            <p class="text-[10px] text-zinc-400 mt-0.5">7-Day Reference ETo depletion curves from local CIMIS station</p>
+          </div>
+
+          <div class="bg-zinc-50 border border-zinc-100 dark:bg-zinc-950/35 dark:border-zinc-800 rounded-xl p-4 flex flex-col justify-between h-32">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-wide block">Peak Reference Loss</span>
+                <span class="text-lg font-extrabold text-zinc-800 dark:text-zinc-100 mt-1 block">0.35 inches/day</span>
+              </div>
+              <span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 dark:bg-rose-950/25 dark:border-rose-900 dark:text-rose-400 animate-pulse">
+                High Deficit Warning
+              </span>
+            </div>
+            
+            <div class="h-12 w-full mt-2">
+              <app-sparkline [data]="historicEtoTrend" [width]="240" [height]="45" strokeColor="#0284c7" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Table Column -->
+      <div class="lg:col-span-8 space-y-4">
+        
+        <!-- Filter and selection actions for Table grid -->
+        <div class="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <span class="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Filter Operational Log:</span>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <select 
+              [value]="statusFilter()" 
+              (change)="onFilterChange($event)"
+              class="text-xs font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
+            >
+              <option value="all">All States</option>
+              <option value="completed">Completed runs</option>
+              <option value="active">Active drip runs</option>
+              <option value="scheduled">Scheduled runs</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Irrigation Events Data Table -->
+        <app-data-table 
+          title="Irrigation Scheduling & Execution Logs" 
+          [subtitle]="'Displaying ' + filteredEvents().length + ' active or recorded irrigation cycles'"
+          [columns]="gridColumns"
+          [data]="filteredEvents()"
+          [cellTemplateSlot]="waterCellTpl"
+        />
+
+        <ng-template #waterCellTpl let-row let-column="column" let-value="value">
+          @if (column.key === 'fieldName') {
+            <div>
+              <span class="font-bold text-zinc-900 dark:text-white block">{{ row.fieldName }}</span>
+              <span class="text-xs text-zinc-400 block mt-0.5">{{ row.crop }}</span>
+            </div>
+          } @else if (column.key === 'startedAt') {
+            <div>
+              <span class="text-zinc-700 dark:text-zinc-300 font-bold block">{{ value | date:'mediumDate' }}</span>
+              <span class="text-[10px] text-zinc-400 block mt-0.5">
+                {{ value | date:'shortTime' }} &bull; {{ row.endedAt | date:'shortTime' }}
+              </span>
+            </div>
+          } @else if (column.key === 'durationHours') {
+            <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ value }} Hours</span>
+          } @else if (column.key === 'appliedInches') {
+            <div>
+              <span class="font-extrabold text-ag-water-600 dark:text-ag-water-400 text-sm block">{{ value }} in</span>
+              <span class="text-[10px] text-zinc-400 block">{{ row.gallonsApplied.toLocaleString() }} Gal</span>
+            </div>
+          } @else if (column.key === 'status') {
+            <div class="flex items-center gap-2">
+              <app-badge [type]="getIrrigationBadgeType(value)">{{ value }}</app-badge>
+              @if (value === 'active') {
+                <button 
+                  (click)="toggleIrrigationStatus(row)"
+                  class="px-2 py-1 border border-emerald-200 bg-emerald-50 text-[10px] font-bold text-emerald-700 rounded hover:bg-emerald-100 transition-colors dark:bg-emerald-950/25 dark:border-emerald-900/50 dark:text-emerald-400 cursor-pointer"
+                >
+                  Shut Off Flow
+                </button>
+              } @else if (value === 'scheduled') {
+                <button 
+                  (click)="toggleIrrigationStatus(row)"
+                  class="px-2 py-1 border border-zinc-200 bg-white text-[10px] font-bold text-zinc-700 rounded hover:bg-zinc-50 transition-colors dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700 cursor-pointer"
+                >
+                  Start Flow Now
+                </button>
+              }
+            </div>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+
+      </div>
+
+    </div>
+
+  }
+
+</div>
+
+<!-- Schedule Irrigation Modal Drawer -->
+<app-modal 
+  [isOpen]="isModalOpen()" 
+  title="Schedule Irrigation Run" 
+  subtitle="Register new planned drip or pivot irrigation cycle coordinates"
+  (closed)="closeScheduleModal()"
+>
+  <form [formGroup]="waterForm" (ngSubmit)="submitScheduleForm()" class="space-y-4">
+    
+    <div>
+      <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Select Target Field</label>
+      <select 
+        formControlName="fieldId"
+        (change)="onFieldChange($event)"
+        class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+      >
+        <option value="">-- Choose Field block --</option>
+        @for (f of fieldStore.fields(); track f.id) {
+          <option [value]="f.id">{{ f.name }} ({{ f.crop }} &bull; {{ f.areaAcres }} ac)</option>
+        }
+      </select>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Applied Depth (Equivalent Inches)</label>
+        <input 
+          type="number" 
+          step="0.05"
+          formControlName="appliedInches"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Duration (Hours)</label>
+        <input 
+          type="number" 
+          formControlName="durationHours"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Start Date & Time</label>
+        <input 
+          type="datetime-local" 
+          formControlName="startedAt"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <!-- Display calculated gallons dynamically based on Field size selection -->
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Calculated Water Volume</label>
+        <div class="w-full text-sm border border-zinc-100 rounded-lg px-3 py-2.5 bg-zinc-100/50 dark:bg-zinc-950/60 dark:border-zinc-850 font-extrabold text-zinc-750 dark:text-zinc-350 select-none">
+          {{ calculatedGallons().toLocaleString() }} Gallons
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3 text-xs leading-relaxed text-zinc-500">
+      * Direct Water Conversion Index: Uses standard agronomic conversion constant: 1 Acre-Inch equivalent water = 27,154 Gallons. Total Gallons = Inches * Acres * 27,154.
+    </div>
+
+    <div actions class="flex items-center gap-2">
+      <button 
+        type="submit"
+        [disabled]="waterForm.invalid"
+        class="px-4 py-2 text-sm font-bold text-white bg-ag-water-600 hover:bg-ag-water-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors dark:bg-ag-water-700 dark:hover:bg-ag-water-800 flex items-center gap-1.5 cursor-pointer"
+      >
+        Queue Irrigation
+      </button>
+    </div>
+
+  </form>
+</app-modal>
