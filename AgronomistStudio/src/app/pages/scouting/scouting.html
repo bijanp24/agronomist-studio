@@ -1,0 +1,498 @@
+<div class="p-6 space-y-6 max-w-7xl mx-auto animate-fade-in">
+
+  <!-- Header Section -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
+        Crop Scouting & Pest Diagnostics
+      </h1>
+      <p class="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+        Log field entries, track insect populations, and monitor crop growth stages in real-time
+      </p>
+    </div>
+
+    <button 
+      (click)="openAddReportModal()"
+      class="px-4 py-2.5 bg-ag-green-600 hover:bg-ag-green-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-2 cursor-pointer shrink-0"
+    >
+      <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Log Scout Entry
+    </button>
+  </div>
+
+  @if (loading()) {
+    <!-- Skeletons loading metrics and lists -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+      <div class="lg:col-span-2 space-y-4">
+        <app-skeleton type="text" />
+        <app-skeleton type="text" />
+      </div>
+      <div class="space-y-4">
+        <app-skeleton type="text" />
+      </div>
+    </div>
+
+  } @else {
+
+    <!-- 1. Stats Summary Bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <app-stat-card 
+        label="Total Logged Entries" 
+        [value]="totalInspectionsValue()" 
+        [trend]="activeFieldsCoverageTrend()"
+        trendType="neutral"
+        description="Comprehensive field inspections"
+        color="zinc"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Severe Pest Outbreaks" 
+        [value]="severeOutbreaksValue()" 
+        trend="Immediate Action Required"
+        [trendType]="severeOutbreaksCount() > 0 ? 'down' : 'neutral'"
+        description="High severity alerts logged"
+        color="gold"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Primary Crop Threat" 
+        [value]="dominantPestValue()" 
+        [trend]="dominantPestTrend()"
+        trendType="neutral"
+        description="Most frequent pest species"
+        color="earth"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.03V3m0 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 0v1.5M12 15.75h.008v.008H12v-.008Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Active Field Advisors" 
+        [value]="activeAdvisorsValue()" 
+        trend="DPR Licensed Scouts"
+        trendType="neutral"
+        description="Logging in-field observations"
+        color="green"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+        </svg>
+      </app-stat-card>
+    </div>
+
+    <!-- 2. Main Directory & Filter Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- List Panel: Filter bar + Feed list -->
+      <div class="lg:col-span-8 space-y-4">
+        
+        <!-- Interactive filter bar -->
+        <div class="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col md:flex-row items-center gap-4">
+          <div class="w-full md:max-w-xs relative shrink-0">
+            <input 
+              type="text" 
+              placeholder="Search scouters / crop variety..."
+              [value]="searchQuery()"
+              (input)="onSearchInput($event)"
+              class="w-full pl-9 pr-4 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+            >
+            <svg class="w-4 h-4 text-zinc-400 absolute left-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.603 10.601Z" />
+            </svg>
+          </div>
+
+          <div class="flex items-center gap-3 w-full md:justify-end flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Severity:</span>
+              <select 
+                [value]="severityFilter()" 
+                (change)="onSeverityFilterChange($event)"
+                class="text-xs font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
+              >
+                <option value="all">All Severities</option>
+                <option value="low">Low Severity</option>
+                <option value="medium">Medium Severity</option>
+                <option value="high">High Severity</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Crop Type:</span>
+              <select 
+                [value]="cropFilter()" 
+                (change)="onCropFilterChange($event)"
+                class="text-xs font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
+              >
+                <option value="all">All Crops</option>
+                <option value="Almonds">Almonds</option>
+                <option value="Pistachios">Pistachios</option>
+                <option value="Wine Grapes">Wine Grapes</option>
+                <option value="Processing Tomatoes">Tomatoes</option>
+                <option value="Alfalfa">Alfalfa</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrollable cards feed -->
+        <div class="space-y-4">
+          @if (filteredReports().length === 0) {
+            <div class="bg-white border border-zinc-200 rounded-xl p-12 text-center text-zinc-400 dark:bg-zinc-900 dark:border-zinc-800 flex flex-col items-center justify-center gap-3 shadow-3xs">
+              <svg class="w-12 h-12 text-zinc-300 dark:text-zinc-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0-10.03V3m0 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 0v1.5M12 15.75h.008v.008H12v-.008Z" />
+              </svg>
+              <h3 class="font-bold text-zinc-800 dark:text-zinc-200 text-sm">No Scouting Logs Found</h3>
+              <p class="text-xs text-zinc-500 max-w-xs leading-relaxed">No reports match the active filters or ranch coordinates. Log a new scout entry above to get started.</p>
+            </div>
+          } @else {
+            @for (report of filteredReports(); track report.id) {
+              <div 
+                class="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs dark:bg-zinc-900 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200 flex flex-col justify-between gap-4 cursor-pointer relative overflow-hidden group"
+                [class.ring-1]="selectedReportId() === report.id"
+                [class.ring-ag-green-500]="selectedReportId() === report.id"
+                (click)="selectReport(report)"
+              >
+                <!-- Severity subtle border indicator -->
+                <div class="absolute left-0 top-0 bottom-0 w-1.5"
+                  [class.bg-emerald-500]="report.severity === 'low'"
+                  [class.bg-amber-500]="report.severity === 'medium'"
+                  [class.bg-rose-500]="report.severity === 'high'"
+                ></div>
+
+                <div class="pl-2.5">
+                  <!-- Header metadata -->
+                  <div class="flex items-start justify-between gap-4">
+                    <div>
+                      <span class="text-xs font-bold text-ag-green-600 dark:text-ag-green-400 uppercase tracking-wider block">
+                        {{ report.fieldName }} &bull; {{ report.crop }}
+                      </span>
+                      <h4 class="font-extrabold text-zinc-950 dark:text-white text-base mt-1 flex items-center gap-2">
+                        Stage: {{ report.cropStage }}
+                        @if (report.severity === 'high') {
+                          <span class="inline-block w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                        }
+                      </h4>
+                    </div>
+
+                    <app-badge [type]="getSeverityBadgeType(report.severity)">
+                      {{ report.severity }} severity
+                    </app-badge>
+                  </div>
+
+                  <!-- Notes block -->
+                  <p class="mt-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed italic line-clamp-2">
+                    "{{ report.notes }}"
+                  </p>
+
+                  <!-- Pest Observations badges -->
+                  @if (report.pestObservations && report.pestObservations.length > 0) {
+                    <div class="mt-3.5 flex flex-wrap gap-1.5">
+                      @for (obs of report.pestObservations; track obs.pestName) {
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-zinc-50 border border-zinc-100 rounded text-[10px] font-bold text-zinc-500 dark:bg-zinc-850 dark:border-zinc-800 dark:text-zinc-400">
+                          <span class="w-1.5 h-1.5 rounded-full"
+                            [class.bg-emerald-400]="report.severity === 'low'"
+                            [class.bg-amber-400]="report.severity === 'medium'"
+                            [class.bg-rose-400]="report.severity === 'high'"
+                          ></span>
+                          {{ obs.pestName }}: {{ obs.percentInfestation || obs.countPerLeaf || 0 }}{{ obs.percentInfestation ? '%' : '/leaf' }}
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Footer scouter context -->
+                <div class="pl-2.5 border-t border-zinc-50 dark:border-zinc-800/60 pt-3 flex items-center justify-between text-[11px] text-zinc-400 font-medium">
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-5 h-5 rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 flex items-center justify-center text-[9px] font-extrabold font-sans uppercase">
+                      {{ report.scouterName.substring(0, 2) }}
+                    </div>
+                    <span>Scouted by <span class="font-bold text-zinc-700 dark:text-zinc-300">{{ report.scouterName }}</span></span>
+                  </div>
+
+                  <span class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                    {{ report.scoutedAt | date:'mediumDate' }} at {{ report.scoutedAt | date:'shortTime' }}
+                  </span>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- Detail Inspector Panel (Sticky Right) -->
+      <div class="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
+        
+        <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-5 dark:bg-zinc-900 dark:border-zinc-800">
+          @if (!detailedReport()) {
+            <div class="text-center py-12 text-zinc-400 flex flex-col items-center justify-center gap-3">
+              <svg class="w-10 h-10 text-zinc-300 dark:text-zinc-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+              <h4 class="font-bold text-zinc-800 dark:text-zinc-200 text-sm">Select Inspection Log</h4>
+              <p class="text-[11px] text-zinc-500 max-w-[200px] leading-relaxed mx-auto">Select any logged scout card from the feed to view geographic coordinates and pest species details.</p>
+            </div>
+          } @else {
+            @if (detailedReport(); as r) {
+              <div class="space-y-4.5">
+                <!-- Header detail meta -->
+                <div class="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                  <div>
+                    <h3 class="font-extrabold text-zinc-950 dark:text-white text-base">Inspector Diagnostics</h3>
+                    <span class="text-[10px] text-zinc-400 font-bold block mt-0.5">ID: {{ r.id }}</span>
+                  </div>
+                  <app-badge [type]="getSeverityBadgeType(r.severity)">{{ r.severity }} severity</app-badge>
+                </div>
+
+                <!-- Field context -->
+                <div class="bg-zinc-50 border border-zinc-100 rounded-xl p-3.5 dark:bg-zinc-950/40 dark:border-zinc-800 space-y-1.5 text-xs text-zinc-600 dark:text-zinc-400">
+                  <div class="flex justify-between">
+                    <span class="text-zinc-400">Field Boundary:</span>
+                    <span class="font-bold text-zinc-900 dark:text-white">{{ r.fieldName }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-zinc-400">Crop Cultivar:</span>
+                    <span class="font-bold text-zinc-800 dark:text-zinc-200">{{ r.crop }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-zinc-400">Physiological Stage:</span>
+                    <span class="font-bold text-zinc-800 dark:text-zinc-200">{{ r.cropStage }}</span>
+                  </div>
+                </div>
+
+                <!-- Diagnostics Summary text -->
+                <div>
+                  <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Observations & Notes</h4>
+                  <div class="bg-zinc-50/50 border border-zinc-100/50 rounded-xl p-4 text-xs italic text-zinc-700 dark:bg-zinc-850 dark:border-zinc-800 dark:text-zinc-300 leading-relaxed">
+                    "{{ r.notes }}"
+                  </div>
+                </div>
+
+                <!-- Pest List Breakdown -->
+                <div>
+                  <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2.5">Identified Threats</h4>
+                  <div class="space-y-2">
+                    @for (obs of r.pestObservations; track obs.pestName) {
+                      <div class="bg-white border border-zinc-200 rounded-lg p-3 dark:bg-zinc-900 dark:border-zinc-800 flex items-center justify-between text-xs shadow-3xs hover:border-zinc-300 transition-colors">
+                        <div>
+                          <span class="font-bold text-zinc-900 dark:text-white block">{{ obs.pestName }}</span>
+                          <span class="text-[10px] text-zinc-400 block mt-0.5">Threshold evaluation</span>
+                        </div>
+                        <span class="font-extrabold text-ag-green-600 dark:text-ag-green-400 bg-ag-green-50 dark:bg-ag-green-950/20 border border-ag-green-100 dark:border-ag-green-900/45 px-2 py-1 rounded">
+                          {{ obs.percentInfestation || obs.countPerLeaf || 0 }}{{ obs.percentInfestation ? '%' : '/leaf' }}
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Geographic coordinate mapping card -->
+                @if (r.locationPin) {
+                  <div>
+                    <h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">GPS Location Coordinate</h4>
+                    <div class="bg-zinc-50 border border-zinc-100 dark:bg-zinc-950/40 dark:border-zinc-800 rounded-xl p-3.5 flex items-center justify-between text-xs font-medium text-zinc-500">
+                      <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-ag-green-600 dark:text-ag-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                        </svg>
+                        <span>Lat: {{ r.locationPin.coordinates[1].toFixed(5) }}, Lng: {{ r.locationPin.coordinates[0].toFixed(5) }}</span>
+                      </div>
+                      <span class="text-[10px] font-bold text-ag-green-600 bg-ag-green-50 px-2 py-0.5 rounded border border-ag-green-100/50 dark:bg-ag-green-950/20 dark:text-ag-green-400 dark:border-ag-green-900">
+                        GPS Active
+                      </span>
+                    </div>
+                  </div>
+                }
+
+              </div>
+            }
+          }
+        </div>
+
+      </div>
+
+    </div>
+
+  }
+
+</div>
+
+<!-- Logging Scout Entry modal-drawer -->
+<app-modal 
+  [isOpen]="isModalOpen()" 
+  title="Log Scout Inspection Report" 
+  subtitle="Register precise insect population matrices and crop physiological stages"
+  (closed)="closeAddReportModal()"
+>
+  <form [formGroup]="scoutForm" (ngSubmit)="submitScoutForm()" class="space-y-4">
+    
+    <div>
+      <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Select Field Boundary</label>
+      <select 
+        formControlName="fieldId"
+        (change)="onFieldChange($event)"
+        class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+      >
+        <option value="">-- Choose Field coordinate --</option>
+        @for (f of fieldStore.fields(); track f.id) {
+          <option [value]="f.id">{{ f.name }} ({{ f.crop }})</option>
+        }
+      </select>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Scouter Name</label>
+        <input 
+          type="text" 
+          formControlName="scouterName"
+          placeholder="e.g. John Deere"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Urgency Severity</label>
+        <select 
+          formControlName="severity"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <option value="low">Low Severity</option>
+          <option value="medium">Medium Severity</option>
+          <option value="high">High Severity</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Physiological Crop Stage</label>
+        <select 
+          formControlName="cropStage"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <!-- Dynamic dropdown helper states centering crop type -->
+          <option value="Bloom">Bloom Stage</option>
+          <option value="Nut Fill">Nut Fill</option>
+          <option value="Fruit Development">Fruit Development</option>
+          <option value="Shell Hardening">Shell Hardening</option>
+          <option value="Flowering & Fruit Set">Flowering & Fruit Set</option>
+          <option value="Hull Split">Hull Split Stage</option>
+          <option value="Vegetative (V-Stage)">Vegetative Growth</option>
+          <option value="Maturity / Harvest">Maturity / Harvest Ready</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Observed Pest Species</label>
+        <select 
+          #pestSelect
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <option value="Pacific Spider Mite">Pacific Spider Mite</option>
+          <option value="Peach Twig Borer">Peach Twig Borer (PTB)</option>
+          <option value="Navel Orangeworm">Navel Orangeworm (NOW)</option>
+          <option value="Early Blight">Early Blight Lesions</option>
+          <option value="Lygus Bug">Lygus Bug</option>
+          <option value="Alfalfa Weevil">Alfalfa Weevil</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Pests observations adding line -->
+    <div class="border border-zinc-100 dark:border-zinc-800/80 rounded-xl p-4 space-y-3 bg-zinc-50/20">
+      <div class="flex justify-between items-center">
+        <span class="text-xs font-extrabold text-zinc-800 dark:text-zinc-200">Species Densities & Leaf Counts</span>
+        <button 
+          type="button"
+          (click)="addPestObservation(pestSelect.value)"
+          class="px-2.5 py-1 text-[10px] font-bold text-white bg-ag-green-600 hover:bg-ag-green-700 rounded transition-colors cursor-pointer"
+        >
+          Add Species to Report
+        </button>
+      </div>
+
+      <!-- Logged list -->
+      @if (pestObservations().length === 0) {
+        <div class="text-center text-[11px] text-zinc-400 italic py-2">
+          No pest densities logged yet. Click "Add Species" to register counts.
+        </div>
+      } @else {
+        <div class="space-y-2.5">
+          @for (p of pestObservations(); track p.pestName; let idx = $index) {
+            <div class="flex items-center justify-between gap-4 text-xs bg-white border border-zinc-200 p-2.5 rounded-lg dark:bg-zinc-900 dark:border-zinc-800">
+              <span class="font-bold text-zinc-800 dark:text-white shrink-0">{{ p.pestName }}</span>
+              
+              <div class="flex items-center gap-1.5 flex-1 justify-end">
+                <input 
+                  type="number" 
+                  [placeholder]="p.pestName === 'Early Blight' ? 'Infestation %' : 'Count per leaf'"
+                  class="w-24 text-center border border-zinc-200 rounded px-1.5 py-0.5 focus:outline-none dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+                  (input)="updatePestValue(idx, $event)"
+                >
+                <span class="text-[10px] text-zinc-400 font-bold uppercase shrink-0">
+                  {{ p.pestName === 'Early Blight' || p.pestName === 'Peach Twig Borer' ? '%' : '/leaf' }}
+                </span>
+              </div>
+
+              <button 
+                type="button" 
+                (click)="removePestObservation(idx)"
+                class="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                aria-label="Delete entry"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div>
+      <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Scouter Assessment & Diagnostic Notes</label>
+      <textarea 
+        formControlName="notes"
+        rows="3"
+        placeholder="Input visual signs of flagging, foliar lesions, egg mass pressure, beneficial insect ratios, etc..."
+        class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white leading-relaxed resize-none"
+      ></textarea>
+    </div>
+
+    <div actions class="flex items-center gap-2">
+      <button 
+        type="submit"
+        [disabled]="scoutForm.invalid"
+        class="px-4 py-2 text-sm font-bold text-white bg-ag-green-600 hover:bg-ag-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-1.5 cursor-pointer"
+      >
+        Log Entry
+      </button>
+    </div>
+
+  </form>
+</app-modal>
