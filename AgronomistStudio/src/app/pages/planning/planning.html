@@ -1,0 +1,502 @@
+<div class="p-6 space-y-6 max-w-7xl mx-auto animate-fade-in">
+
+  <!-- Header Section -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
+        Crop Planning & Yield Analytics
+      </h1>
+      <p class="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+        Manage multi-season planting schedules, track operational harvests, and benchmark historic field yield performance
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3 shrink-0">
+      <button 
+        (click)="openAddPlantingModal()"
+        class="px-4 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-sm font-bold rounded-xl transition-colors dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white flex items-center gap-2 cursor-pointer"
+      >
+        <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Plan Planting
+      </button>
+
+      <button 
+        (click)="openAddHarvestModal()"
+        class="px-4 py-2.5 bg-ag-green-600 hover:bg-ag-green-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-2 cursor-pointer"
+      >
+        <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Log Harvest
+      </button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <!-- Skeletons loading metrics and lists -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+      <app-skeleton type="card" />
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+      <div class="lg:col-span-2 space-y-4">
+        <app-skeleton type="text" />
+      </div>
+      <div class="space-y-4">
+        <app-skeleton type="text" />
+      </div>
+    </div>
+
+  } @else {
+
+    <!-- 1. Stats Summary Bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <app-stat-card 
+        label="Total Planned Acreage" 
+        [value]="totalPlannedAcreageValue()" 
+        trend="Across Active Ranches"
+        trendType="neutral"
+        description="Acreage mapped to planning cycles"
+        color="green"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Active Planting Cycles" 
+        [value]="activeCyclesCount().toString()" 
+        trend="In-ground Crop Blocks"
+        trendType="neutral"
+        description="Fields with status as 'planted'"
+        color="earth"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18ZM12 18V3" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Harvest Cycles Logged" 
+        [value]="harvestLogsCount().toString()" 
+        trend="Yield events filed"
+        trendType="neutral"
+        description="Total completed harvest sheets"
+        color="gold"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12h8.953m-8.953 0V4a2 2 0 0 1 2-2h4.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V12m-11.953 0v8a2 2 0 0 0 2 2h2m11.953-10v8a2 2 0 0 1-2 2h-1.047M12 10.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
+        </svg>
+      </app-stat-card>
+
+      <app-stat-card 
+        label="Average Almond Yield" 
+        [value]="avgYieldAcreAlmonds()" 
+        trend="Tons per Acre average"
+        trendType="neutral"
+        description="Compared to historical targets"
+        color="zinc"
+      >
+        <svg icon class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+        </svg>
+      </app-stat-card>
+    </div>
+
+    <!-- 2. Dual Workspace Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- Left Column: Planting Schedules & Harvest Operations -->
+      <div class="lg:col-span-8 space-y-6">
+        
+        <!-- Section: Crop Planting Schedule -->
+        <app-data-table 
+          title="Season Crop Planting & Harvest Schedule" 
+          subtitle="Annual variety mappings, target seed timings, and projection dates"
+          [columns]="plantingColumns"
+          [data]="formattedPlantingPlans()"
+          [cellTemplateSlot]="plantingCellTpl"
+        />
+
+        <ng-template #plantingCellTpl let-row let-column="column" let-value="value">
+          @if (column.key === 'fieldName') {
+            <div>
+              <span class="font-bold text-zinc-900 dark:text-white block">{{ row.fieldName }}</span>
+              <span class="text-[10px] text-zinc-400 font-bold uppercase block mt-0.5">Crop Year {{ row.cropYear }}</span>
+            </div>
+          } @else if (column.key === 'crop') {
+            <div>
+              <span class="font-semibold text-zinc-800 dark:text-zinc-200 block text-xs">{{ row.crop }}</span>
+              <span class="text-[10px] text-zinc-400 block mt-0.5">{{ row.variety || 'Standard' }}</span>
+            </div>
+          } @else if (column.key === 'targetPlantingDate') {
+            <div>
+              <span class="text-zinc-500 dark:text-zinc-400 font-medium block text-xs">
+                Target: {{ value | date:'mediumDate' }}
+              </span>
+              @if (row.actualPlantingDate) {
+                <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block mt-0.5">
+                  Planted: {{ row.actualPlantingDate | date:'mediumDate' }}
+                </span>
+              } @else {
+                <span class="text-[10px] text-zinc-400 block mt-0.5">Not Planted yet</span>
+              }
+            </div>
+          } @else if (column.key === 'targetHarvestDate') {
+            <span class="text-zinc-600 dark:text-zinc-400 font-medium block text-xs">
+              {{ value | date:'mediumDate' }}
+            </span>
+          } @else if (column.key === 'status') {
+            <app-badge [type]="value === 'harvested' ? 'success' : (value === 'planted' ? 'info' : (value === 'planned' ? 'warning' : 'zinc'))">
+              {{ value }}
+            </app-badge>
+          } @else if (column.key === 'actions') {
+            <div class="flex items-center gap-1.5">
+              @if (row.status === 'planned') {
+                <button 
+                  (click)="markAsPlanted(row)"
+                  class="px-2 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 text-[10px] font-bold rounded border border-sky-200 transition-colors cursor-pointer"
+                >
+                  Confirm Planted
+                </button>
+              }
+              @if (row.status === 'planted') {
+                <button 
+                  (click)="openHarvestFromPlanting(row)"
+                  class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded border border-emerald-200 transition-colors cursor-pointer"
+                >
+                  Log Harvest
+                </button>
+              }
+            </div>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+
+        <!-- Section: Harvest Operations Ledger -->
+        <app-data-table 
+          title="Operational Harvest & Yield Ledger" 
+          subtitle="Verified bulk load weights, harvest timings, and raw quality classifications"
+          [columns]="harvestColumns"
+          [data]="formattedHarvestRecords()"
+          [cellTemplateSlot]="harvestCellTpl"
+        />
+
+        <ng-template #harvestCellTpl let-row let-column="column" let-value="value">
+          @if (column.key === 'fieldName') {
+            <div>
+              <span class="font-bold text-zinc-900 dark:text-white block">{{ row.fieldName }}</span>
+              <span class="text-[10px] text-zinc-400 font-bold block mt-0.5">Year {{ row.cropYear }} &bull; Variety: {{ row.variety || 'N/A' }}</span>
+            </div>
+          } @else if (column.key === 'harvestDate') {
+            <span class="text-zinc-600 dark:text-zinc-400 font-medium block text-xs">
+              {{ value | date:'mediumDate' }}
+            </span>
+          } @else if (column.key === 'totalYieldAmount') {
+            <span class="font-extrabold text-zinc-900 dark:text-white">
+              {{ value | number }} {{ row.yieldUnit }}
+            </span>
+          } @else if (column.key === 'qualityGrade') {
+            <span class="text-xs font-bold text-ag-green-600 dark:text-ag-green-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-100/40 dark:border-emerald-900">
+              {{ value || 'Standard' }}
+            </span>
+          } @else if (column.key === 'operatorName') {
+            <span class="text-xs text-zinc-500 font-medium">{{ value }}</span>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+
+      </div>
+
+      <!-- Right Column: Historic Yield Benchmarks -->
+      <div class="lg:col-span-4 space-y-6">
+        
+        <div class="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
+          <div class="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/15 flex justify-between items-center">
+            <div>
+              <h3 class="font-bold text-zinc-900 dark:text-white text-sm">Historic Yield Performance</h3>
+              <p class="text-[10px] text-zinc-400 mt-0.5">Benchmark seasonal production limits against 5-year baseline</p>
+            </div>
+          </div>
+
+          <div class="p-4 space-y-4">
+            @if (formattedYieldRecords().length === 0) {
+              <div class="text-center text-zinc-400 text-xs py-8">No historical yield benchmarks loaded.</div>
+            } @else {
+              @for (record of formattedYieldRecords(); track record.id) {
+                <div class="p-3.5 bg-zinc-50 border border-zinc-100 dark:bg-zinc-950/25 dark:border-zinc-800 rounded-xl space-y-2.5">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h4 class="font-extrabold text-zinc-800 dark:text-zinc-200 text-xs">{{ record.fieldName }}</h4>
+                      <span class="text-[10px] text-zinc-400 block mt-0.5">Crop Year {{ record.cropYear }} &bull; {{ record.crop }}</span>
+                    </div>
+
+                    @if (record.historicalAverage) {
+                      @let perf = Math.round(((record.avgYieldPerAcre - record.historicalAverage) / record.historicalAverage) * 100);
+                      <span 
+                        class="text-[10px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-0.5"
+                        [class.bg-emerald-50]="perf >= 0" [class.text-emerald-700]="perf >= 0" [class.dark:bg-emerald-950/20]="perf >= 0"
+                        [class.bg-rose-50]="perf < 0" [class.text-rose-700]="perf < 0" [class.dark:bg-rose-950/20]="perf < 0"
+                      >
+                        {{ perf >= 0 ? '+' : '' }}{{ perf }}% vs Avg
+                      </span>
+                    }
+                  </div>
+
+                  <!-- Benchmarking scale bar -->
+                  <div class="space-y-1 text-[10px]">
+                    <div class="flex justify-between text-zinc-400">
+                      <span>Historical Average: {{ record.historicalAverage }} {{ record.unit }}/ac</span>
+                      <span class="font-bold text-zinc-800 dark:text-zinc-200">Season Actual: {{ record.avgYieldPerAcre }} {{ record.unit }}/ac</span>
+                    </div>
+
+                    <div class="w-full bg-zinc-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden flex">
+                      @if (record.historicalAverage) {
+                        <!-- Compare progress filled portions -->
+                        <div class="bg-zinc-400 h-full" [style.width.%]="50"></div>
+                        <div 
+                          class="h-full rounded-r-full"
+                          [class.bg-emerald-500]="record.avgYieldPerAcre >= record.historicalAverage"
+                          [class.bg-rose-400]="record.avgYieldPerAcre < record.historicalAverage"
+                          [style.width.%]="Math.min(Math.abs((record.avgYieldPerAcre - record.historicalAverage) / record.historicalAverage) * 50, 50)"
+                        ></div>
+                      } @else {
+                        <div class="bg-zinc-400 h-full rounded-full" [style.width.%]="100"></div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  }
+
+</div>
+
+<!-- Plan Planting Modal Drawer -->
+<app-modal 
+  [isOpen]="isPlantingModalOpen()" 
+  title="Schedule New Crop Planting Cycle" 
+  subtitle="Define crop years, specify hybrid cultivars, and predict operational target dates"
+  (closed)="closeAddPlantingModal()"
+>
+  <form [formGroup]="plantingForm" (ngSubmit)="submitPlantingForm()" class="space-y-4">
+    
+    <div>
+      <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Select Field Block</label>
+      <select 
+        formControlName="fieldId"
+        (change)="onFieldChange()"
+        class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+      >
+        <option value="">-- Choose Field block --</option>
+        @for (f of fieldStore.fields(); track f.id) {
+          <option [value]="f.id">{{ f.name }} ({{ f.crop }})</option>
+        }
+      </select>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Crop Year</label>
+        <input 
+          type="number" 
+          formControlName="cropYear"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Crop Type</label>
+        <input 
+          type="text" 
+          formControlName="crop"
+          readonly
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-100 dark:bg-zinc-900 cursor-not-allowed dark:border-zinc-800 dark:text-zinc-400 focus:outline-none"
+        >
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Variety / Hybrid Cultivar</label>
+      <input 
+        type="text" 
+        formControlName="variety"
+        placeholder="e.g. Nonpareil, Monterey, Independence"
+        class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+      >
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Target Planting Date</label>
+        <input 
+          type="date" 
+          formControlName="targetPlantingDate"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Target Harvest Date</label>
+        <input 
+          type="date" 
+          formControlName="targetHarvestDate"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+    </div>
+
+    <div actions class="flex items-center gap-2">
+      <button 
+        type="submit"
+        [disabled]="plantingForm.invalid"
+        class="px-4 py-2 text-sm font-bold text-white bg-ag-green-600 hover:bg-ag-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-1.5 cursor-pointer"
+      >
+        File Planting Plan
+      </button>
+    </div>
+
+  </form>
+</app-modal>
+
+<!-- Log Harvest Operations Modal Drawer -->
+<app-modal 
+  [isOpen]="isHarvestModalOpen()" 
+  title="Log Completed Operational Harvest" 
+  subtitle="Register bulk load weight scales and confirm product baseline quality tiers"
+  (closed)="closeAddHarvestModal()"
+>
+  <form [formGroup]="harvestForm" (ngSubmit)="submitHarvestForm()" class="space-y-4">
+    
+    <div>
+      <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Select Field Block</label>
+      <select 
+        formControlName="fieldId"
+        (change)="onHarvestFieldChange()"
+        class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+      >
+        <option value="">-- Choose Field block --</option>
+        @for (f of fieldStore.fields(); track f.id) {
+          <option [value]="f.id">{{ f.name }} ({{ f.crop }})</option>
+        }
+      </select>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Crop Year</label>
+        <input 
+          type="number" 
+          formControlName="cropYear"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Crop Type</label>
+        <input 
+          type="text" 
+          formControlName="crop"
+          readonly
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-100 dark:bg-zinc-900 cursor-not-allowed dark:border-zinc-800 dark:text-zinc-400 focus:outline-none"
+        >
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Variety / Cultivar</label>
+        <input 
+          type="text" 
+          formControlName="variety"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Actual Harvest Date</label>
+        <input 
+          type="date" 
+          formControlName="harvestDate"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3">
+      <div class="col-span-2">
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Total Harvested Yield Amount</label>
+        <input 
+          type="number" 
+          formControlName="totalYieldAmount"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Yield Unit</label>
+        <select 
+          formControlName="yieldUnit"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <option value="tons">Tons</option>
+          <option value="lbs">Lbs</option>
+          <option value="bins">Bins</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Quality Grading Tier</label>
+        <select 
+          formControlName="qualityGrade"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <option value="Choice">Choice (Premium)</option>
+          <option value="Select">Select (Standard)</option>
+          <option value="Standard">Standard (Industrial)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Operator Name / Custom Broker</label>
+        <input 
+          type="text" 
+          formControlName="operatorName"
+          placeholder="e.g. John Deere Harvester Inc"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+    </div>
+
+    <div actions class="flex items-center gap-2">
+      <button 
+        type="submit"
+        [disabled]="harvestForm.invalid"
+        class="px-4 py-2 text-sm font-bold text-white bg-ag-green-600 hover:bg-ag-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-1.5 cursor-pointer"
+      >
+        Submit Harvest Log
+      </button>
+    </div>
+
+  </form>
+</app-modal>
