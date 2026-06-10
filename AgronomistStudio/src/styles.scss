@@ -1,1 +1,99 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Earthy Agricultural Palette */
+  --color-ag-green-50: #f4f7f2;
+  --color-ag-green-100: #e5ece0;
+  --color-ag-green-200: #cbdbbe;
+  --color-ag-green-300: #a7c193;
+  --color-ag-green-400: #81a46b;
+  --color-ag-green-500: #5e844a; /* Leaf & Crop Health */
+  --color-ag-green-600: #496939;
+  --color-ag-green-700: #3b522e;
+  --color-ag-green-800: #304226;
+  --color-ag-green-900: #2a3721;
+  --color-ag-green-950: #141f10;
+
+  --color-ag-earth-50: #faf6f0;
+  --color-ag-earth-100: #f2e9dc;
+  --color-ag-earth-200: #e2d2be;
+  --color-ag-earth-300: #ceb59a;
+  --color-ag-earth-400: #b89576;
+  --color-ag-earth-500: #a47957; /* Rich Silt & Loam */
+  --color-ag-earth-600: #93654b;
+  --color-ag-earth-700: #7b513c;
+  --color-ag-earth-800: #644234;
+  --color-ag-earth-900: #52372d;
+  --color-ag-earth-950: #2c1f1a;
+
+  --color-ag-gold-50: #fefcf3;
+  --color-ag-gold-100: #fbf5df;
+  --color-ag-gold-200: #f5e7b7;
+  --color-ag-gold-300: #edd185;
+  --color-ag-gold-400: #e3b552;
+  --color-ag-gold-500: #d6982e; /* Canola, Sun & Nutrients */
+  --color-ag-gold-600: #b87823;
+  --color-ag-gold-700: #995c1f;
+  --color-ag-gold-800: #7c481e;
+  --color-ag-gold-900: #663c1c;
+  --color-ag-gold-950: #391e0c;
+
+  --color-ag-water-50: #f1f8fc;
+  --color-ag-water-100: #e1f0fa;
+  --color-ag-water-200: #bce0f4;
+  --color-ag-water-300: #84caeb;
+  --color-ag-water-400: #46afd9;
+  --color-ag-water-500: #2294c3; /* Irrigation & Water moisture */
+  --color-ag-water-600: #1877a5;
+  --color-ag-water-700: #155f85;
+  --color-ag-water-800: #14516e;
+  --color-ag-water-900: #15445d;
+  --color-ag-water-950: #0e2b3e;
+
+  /* Accent aliases for UI components */
+  --color-primary-50: var(--color-ag-green-50);
+  --color-primary-100: var(--color-ag-green-100);
+  --color-primary-200: var(--color-ag-green-200);
+  --color-primary-300: var(--color-ag-green-300);
+  --color-primary-400: var(--color-ag-green-400);
+  --color-primary-500: var(--color-ag-green-500);
+  --color-primary-600: var(--color-ag-green-600);
+  --color-primary-700: var(--color-ag-green-700);
+  --color-primary-800: var(--color-ag-green-800);
+  --color-primary-900: var(--color-ag-green-900);
+  --color-primary-950: var(--color-ag-green-950);
+
+  --color-secondary-50: var(--color-ag-earth-50);
+  --color-secondary-100: var(--color-ag-earth-100);
+  --color-secondary-200: var(--color-ag-earth-200);
+  --color-secondary-300: var(--color-ag-earth-300);
+  --color-secondary-400: var(--color-ag-earth-400);
+  --color-secondary-500: var(--color-ag-earth-500);
+  --color-secondary-600: var(--color-ag-earth-600);
+  --color-secondary-700: var(--color-ag-earth-700);
+  --color-secondary-800: var(--color-ag-earth-800);
+  --color-secondary-900: var(--color-ag-earth-900);
+  --color-secondary-950: var(--color-ag-earth-950);
+
+  --color-accent-50: var(--color-ag-gold-50);
+  --color-accent-100: var(--color-ag-gold-100);
+  --color-accent-200: var(--color-ag-gold-200);
+  --color-accent-300: var(--color-ag-gold-300);
+  --color-accent-400: var(--color-ag-gold-400);
+  --color-accent-500: var(--color-ag-gold-500);
+  --color-accent-600: var(--color-ag-gold-600);
+  --color-accent-700: var(--color-ag-gold-700);
+  --color-accent-800: var(--color-ag-gold-800);
+  --color-accent-900: var(--color-ag-gold-900);
+  --color-accent-950: var(--color-ag-gold-950);
+}
+
+/* Custom Base Layer styles */
+@layer base {
+  body {
+    @apply bg-zinc-50 text-zinc-900 antialiased selection:bg-ag-green-100 dark:bg-zinc-950 dark:text-zinc-50 dark:selection:bg-ag-green-950;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}

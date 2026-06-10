@@ -11,6 +11,7 @@
     "shared"
   ],
   "scripts": {
+    "start": "npm run dev",
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "npm run start --workspace=AgronomistStudio",
     "dev:api": "npm run dev --workspace=server",
@@ -23,6 +24,7 @@
     }
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
     "autoprefixer": "^10.5.0",
     "concurrently": "^8.2.2",
     "postcss": "^8.5.15",
