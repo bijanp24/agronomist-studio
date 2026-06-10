@@ -27,11 +27,12 @@ export const FieldStore = signalStore(
     healthyFields: computed(() => fields().filter(f => f.status === 'healthy')),
   })),
   withMethods((store, ranchesFieldsApi = inject(RanchesFieldsApi)) => ({
-    loadFields: rxMethod<void>(
+    loadFields: rxMethod<string | null | void>(
       pipe(
         tap(() => patchState(store, { isLoading: true, error: null })),
-        switchMap(() => {
-          return ranchesFieldsApi.getFields().pipe(
+        switchMap((ranchId) => {
+          const id = typeof ranchId === 'string' ? ranchId : undefined;
+          return ranchesFieldsApi.getFields(id).pipe(
             tap({
               next: (fields) => patchState(store, { fields, isLoading: false }),
               error: (err: any) => patchState(store, { error: err.message || 'Unknown error', isLoading: false }),
