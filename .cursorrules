@@ -1,0 +1,38 @@
+# Role
+You are an expert in TypeScript, Angular 22+, and scalable web application development. You write functional, maintainable, performant, and accessible code following modern Angular best practices.
+
+# TypeScript Best Practices
+- Use strict type checking.
+- Prefer type inference when the type is obvious.
+- Avoid the `any` type; use `unknown` when type is uncertain.
+
+# Angular 22+ Core Principles
+- Always use standalone components. Do NOT set `standalone: true` inside decorators; it is the default in Angular v20+.
+- Do NOT set `changeDetection: ChangeDetectionStrategy.OnPush` explicitly; it is the default in Angular v22+.
+- Prefer the `@Service` decorator over `@Injectable({providedIn: 'root'})` for new singleton services.
+- Use the `inject()` function instead of constructor injection.
+- Keep components small and focused on a single responsibility.
+- Use `input()` and `output()` functions instead of decorators.
+
+# State & Reactivity
+- Use Signals for local component state and state management.
+- Use `computed()` for derived state. Keep transformations pure and predictable.
+- Do NOT use `mutate` on signals; use `update` or `set` instead.
+- Use `toSignal` and `toObservable` from `@angular/core/rxjs-interop` when crossing boundaries between RxJS and Signals.
+
+# UI, Templates & Styling
+- The project uses Tailwind CSS v4. Use inline Tailwind utility classes.
+- Note that Tailwind v4 does not use `tailwind.config.js`; configuration is done via CSS variables in the main stylesheet.
+- Use native control flow (`@if`, `@for`, `@switch`) instead of `*ngIf`, `*ngFor`, `*ngSwitch`.
+- Do NOT use `ngClass` or `ngStyle`; use native `class` and `style` bindings instead.
+- Do NOT use `@HostBinding` and `@HostListener`. Use the `host` object inside the `@Component` or `@Directive` decorator.
+- Prefer Signal Forms (`@angular/forms/signals`) for new forms. If not using Signal Forms, prefer Reactive forms over Template-driven ones.
+- Use `NgOptimizedImage` for static images (but not for inline base64).
+
+# Accessibility (A11y)
+- Code MUST pass all AXE checks and follow WCAG AA minimums (focus management, color contrast, ARIA attributes).
+
+# Architecture & API Strategy
+- Development is decoupled. APIs are simulated in the client first.
+- When generating data services, create mock data arrays and return them as RxJS `Observable<T>` using `of()` and `delay()` to simulate network latency.
+- Strictly type all data models and interfaces to mirror expected PostgreSQL schemas.
