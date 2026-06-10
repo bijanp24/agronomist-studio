@@ -1,0 +1,593 @@
+<div class="p-6 space-y-6 max-w-7xl mx-auto">
+
+  <!-- Dynamic Header depending on List vs Detail state -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      @if (selectedField()) {
+        <div class="flex items-center gap-2.5">
+          <button 
+            (click)="deselectField()"
+            class="p-2 bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-700 rounded-xl transition-colors dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800 flex items-center justify-center shrink-0 cursor-pointer shadow-sm group"
+            aria-label="Back to fields"
+          >
+            <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            </svg>
+          </button>
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
+              {{ selectedField()?.name }}
+            </h1>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+              Field Registry &bull; {{ selectedField()?.crop }} &bull; {{ selectedField()?.variety }}
+            </p>
+          </div>
+        </div>
+      } @else {
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white tracking-tight">
+            @if (ranchStore.selectedRanchId()) {
+              {{ ranchStore.selectedRanchName() }} Fields
+            } @else {
+              California Crop Registry
+            }
+          </h1>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">
+            Interactive GIS Maps, Acreage Tracking & Field Health Indices
+          </p>
+        </div>
+      }
+    </div>
+
+    <!-- Right Side Actions -->
+    <div class="flex items-center gap-3 shrink-0">
+      @if (!selectedField()) {
+        <button 
+          (click)="openAddFieldModal()"
+          class="px-4 py-2.5 bg-ag-green-600 hover:bg-ag-green-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-2 cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Register Field
+        </button>
+      } @else {
+        <!-- Action state in detail -->
+        <app-badge [type]="selectedField()?.status === 'healthy' ? 'success' : (selectedField()?.status === 'needs-attention' ? 'warning' : 'danger')">
+          {{ selectedField()?.status }} health
+        </app-badge>
+      }
+    </div>
+  </div>
+
+  <!-- --- STATE 1: REGISTRY DIRECTORY & GIS SPLIT-VIEW --- -->
+  @if (!selectedField()) {
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- Table List Panel (Left/Top) -->
+      <div class="lg:col-span-7 space-y-4">
+        
+        <!-- Filter Bar -->
+        <div class="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="w-full sm:max-w-xs relative">
+            <input 
+              type="text" 
+              placeholder="Search fields/crops..."
+              [value]="localSearchQuery()"
+              (input)="onLocalSearch($event)"
+              class="w-full pl-9 pr-4 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+            >
+            <svg class="w-4 h-4 text-zinc-400 absolute left-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.603 10.601Z" />
+            </svg>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+            <span class="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Filter Status:</span>
+            <select 
+              [value]="statusFilter()" 
+              (change)="onFilterChange($event)"
+              class="text-xs font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
+            >
+              <option value="all">All States</option>
+              <option value="healthy">Healthy</option>
+              <option value="needs-attention">Attention</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Data Grid Component -->
+        <app-data-table 
+          title="Active Fields Index" 
+          [subtitle]="'Displaying ' + filteredFields().length + ' crops matching filter parameters'"
+          [columns]="fieldColumns"
+          [data]="filteredFields()"
+          [cellTemplateSlot]="fieldCellTpl"
+          [rowClickable]="true"
+          (rowClick)="onFieldSelect($event)"
+        />
+
+        <!-- DataTable Custom template cells -->
+        <ng-template #fieldCellTpl let-row let-column="column" let-value="value">
+          @if (column.key === 'name') {
+            <div>
+              <span class="font-bold text-zinc-900 dark:text-white block group-hover:text-ag-green-600">{{ row.name }}</span>
+              <span class="text-xs text-zinc-400 block mt-0.5">{{ row.county }} County</span>
+            </div>
+          } @else if (column.key === 'crop') {
+            <div>
+              <span class="font-semibold text-zinc-800 dark:text-zinc-200 block">{{ row.crop }}</span>
+              <span class="text-xs text-zinc-500 dark:text-zinc-400 block">{{ row.variety || 'N/A' }}</span>
+            </div>
+          } @else if (column.key === 'areaAcres') {
+            <span class="font-bold text-zinc-800 dark:text-zinc-200">{{ value }} ac</span>
+          } @else if (column.key === 'status') {
+            <app-badge [type]="value === 'healthy' ? 'healthy' : (value === 'needs-attention' ? 'needs-attention' : 'critical')">
+              {{ value }}
+            </app-badge>
+          } @else if (column.key === 'lastScouted') {
+            <span class="text-zinc-500 dark:text-zinc-400 text-xs block font-medium">
+              {{ value ? (value | date:'mediumDate') : 'Never Scouted' }}
+            </span>
+          } @else {
+            {{ value }}
+          }
+        </ng-template>
+
+      </div>
+
+      <!-- Interactive GIS Map Panel (Right/Bottom) -->
+      <div class="lg:col-span-5 space-y-4 lg:sticky lg:top-24">
+        <div class="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm dark:bg-zinc-900 dark:border-zinc-800 h-[520px] flex flex-col">
+          
+          <!-- Map Header bar -->
+          <div class="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/20 flex justify-between items-center shrink-0">
+            <div>
+              <h3 class="font-bold text-zinc-900 dark:text-white text-sm">GIS Crop Boundaries</h3>
+              <p class="text-[10px] text-zinc-400 mt-0.5">MapLibre GL Vector Map Layer &bull; Click fields to inspect</p>
+            </div>
+            
+            <button 
+              (click)="resetMapCamera()"
+              class="px-2.5 py-1 bg-white hover:bg-zinc-50 border border-zinc-200 text-[10px] font-bold text-zinc-600 rounded-md shadow-xs dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700 cursor-pointer"
+            >
+              Recenter Map
+            </button>
+          </div>
+
+          <!-- The Map Instance Container -->
+          <div class="flex-1 w-full h-full relative">
+            <div #mapContainer class="w-full h-full"></div>
+
+            <!-- Loading overlay when Map is initializing -->
+            @if (mapLoading()) {
+              <div class="absolute inset-0 bg-zinc-50/50 backdrop-blur-xs flex items-center justify-center dark:bg-zinc-950/50">
+                <div class="flex flex-col items-center gap-3">
+                  <div class="w-6 h-6 border-2 border-ag-green-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span class="text-xs font-bold text-zinc-500">Initializing GIS Engine...</span>
+                </div>
+              </div>
+            }
+
+            @if (mapError()) {
+              <!-- Fallback Simulated SVG map if MapLibre fails styles or offline -->
+              <div class="absolute inset-0 bg-zinc-100 dark:bg-zinc-950 p-6 flex flex-col items-center justify-center text-center">
+                <svg class="w-12 h-12 text-zinc-300 dark:text-zinc-700 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                </svg>
+                <h4 class="font-bold text-zinc-800 dark:text-zinc-200 text-sm">Offline Vector Fallback</h4>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs leading-relaxed">Map styles could not load. Rendering high-contrast interactive vector boundaries directly via local SVG.</p>
+                
+                <!-- Local SVG boundary rendering -->
+                <div class="w-full max-w-[220px] aspect-square border border-zinc-200/50 dark:border-zinc-800 rounded-lg mt-4 bg-white dark:bg-zinc-900 p-2 flex items-center justify-center">
+                  <svg class="w-full h-full overflow-visible" viewBox="0 0 100 100">
+                    @for (field of filteredFields(); track field.id) {
+                      <polygon 
+                        points="20,20 80,25 70,80 15,70"
+                        fill="rgba(94, 132, 74, 0.2)"
+                        stroke="#5e844a"
+                        stroke-width="1.5"
+                        class="cursor-pointer hover:fill-ag-green-500/40 transition-colors"
+                        (click)="onFieldSelect(field)"
+                      />
+                    }
+                  </svg>
+                </div>
+              </div>
+            }
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  }
+
+  <!-- --- STATE 2: CROP FIELD DETAIL SPEC & TIMELINE --- -->
+  @if (selectedField(); as field) {
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- General Specs & Laboratory Nutrients Report Card (Left Split) -->
+      <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
+        
+        <!-- Field Summary Panel -->
+        <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4 dark:bg-zinc-900 dark:border-zinc-800">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Field Coordinates</span>
+            <span class="text-xs font-semibold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+              Region: Central Valley
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 text-xs">
+            <div class="bg-zinc-50/60 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3">
+              <span class="text-zinc-400 dark:text-zinc-500 font-semibold block">Total Acreage</span>
+              <span class="text-base font-extrabold text-zinc-900 dark:text-white mt-1 block">{{ field.areaAcres }} Acres</span>
+            </div>
+            <div class="bg-zinc-50/60 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3">
+              <span class="text-zinc-400 dark:text-zinc-500 font-semibold block">Crop Cultivar</span>
+              <span class="text-base font-extrabold text-zinc-900 dark:text-white mt-1 block truncate" [title]="field.crop">{{ field.crop }}</span>
+            </div>
+          </div>
+
+          <div class="space-y-2 text-xs border-t border-zinc-100 dark:border-zinc-800 pt-3">
+            <div class="flex justify-between">
+              <span class="text-zinc-400">Variety Selection</span>
+              <span class="font-bold text-zinc-800 dark:text-zinc-200">{{ field.variety || 'N/A' }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-zinc-400">Ranch Allocation</span>
+              <span class="font-bold text-zinc-800 dark:text-zinc-200">{{ ranchStore.selectedRanchName() }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-zinc-400">Soil District</span>
+              <span class="font-bold text-zinc-800 dark:text-zinc-200">{{ field.county }} County</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-zinc-400">Scouted Status</span>
+              <span class="font-bold text-zinc-800 dark:text-zinc-200">
+                {{ field.lastScouted ? (field.lastScouted | date:'mediumDate') : 'No scouting logged' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nitrogen Plan & Fertilizer Budget Card -->
+        @if (selectedNitrogenPlan(); as plan) {
+          <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4 dark:bg-zinc-900 dark:border-zinc-800">
+            <div class="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+              <h3 class="font-bold text-sm text-zinc-900 dark:text-white">Nitrogen Budget ({{ plan.cropYear }})</h3>
+              <app-badge type="info">CA DPR Credit Compliant</app-badge>
+            </div>
+
+            <div class="space-y-3 text-xs">
+              <!-- Nitrogen progress bar -->
+              <div>
+                <div class="flex justify-between font-semibold mb-1">
+                  <span class="text-zinc-500">Applied N Target: {{ plan.appliedN_lbsPerAcre }} lbs/ac</span>
+                  <span class="text-zinc-800 dark:text-zinc-200 font-bold">{{ Math.round((plan.appliedN_lbsPerAcre / plan.budgetedN_lbsPerAcre) * 100) }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                  <div 
+                    class="bg-ag-green-600 dark:bg-ag-green-500 h-full rounded-full" 
+                    [style.width.%]="Math.min((plan.appliedN_lbsPerAcre / plan.budgetedN_lbsPerAcre) * 100, 100)"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Breakdown values -->
+              <div class="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                <div class="p-2 bg-zinc-50 dark:bg-zinc-950 rounded border border-zinc-100/50 dark:border-zinc-800">
+                  <span class="text-zinc-400 font-medium block">Total N Budget</span>
+                  <span class="font-extrabold text-zinc-800 dark:text-zinc-100 mt-0.5 block">{{ plan.budgetedN_lbsPerAcre }} lbs/ac</span>
+                </div>
+                <div class="p-2 bg-zinc-50 dark:bg-zinc-950 rounded border border-zinc-100/50 dark:border-zinc-800">
+                  <span class="text-zinc-400 font-medium block">Organic Matter N</span>
+                  <span class="font-extrabold text-zinc-800 dark:text-zinc-100 mt-0.5 block">{{ plan.organicN_lbsPerAcre }} lbs/ac</span>
+                </div>
+                <div class="p-2 bg-zinc-50 dark:bg-zinc-950 rounded border border-zinc-100/50 dark:border-zinc-800">
+                  <span class="text-zinc-400 font-medium block">Residual soil N</span>
+                  <span class="font-extrabold text-zinc-800 dark:text-zinc-100 mt-0.5 block">{{ plan.creditsResidualN_lbsPerAcre }} lbs/ac</span>
+                </div>
+                <div class="p-2 bg-zinc-50 dark:bg-zinc-950 rounded border border-zinc-100/50 dark:border-zinc-800">
+                  <span class="text-zinc-400 font-medium block">Yield Goal / Acre</span>
+                  <span class="font-extrabold text-zinc-800 dark:text-zinc-100 mt-0.5 block">{{ plan.yieldGoalTonsPerAcre }} Tons/ac</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Laboratory Soil Samples -->
+        @if (selectedSoilSamples().length > 0) {
+          <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4 dark:bg-zinc-900 dark:border-zinc-800">
+            <div class="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+              <h3 class="font-bold text-sm text-zinc-900 dark:text-white">Soil Mineral Analysis</h3>
+              <app-badge [type]="selectedSoilSamples()[0].status === 'optimal' ? 'success' : 'warning'">
+                {{ selectedSoilSamples()[0].status }} status
+              </app-badge>
+            </div>
+
+            @for (sample of selectedSoilSamples(); track sample.id) {
+              <div class="space-y-2.5 text-xs">
+                <div class="flex justify-between text-[11px] text-zinc-400">
+                  <span>Lab Ref: {{ sample.labSampleNumber }}</span>
+                  <span>Date: {{ sample.sampleDate | date:'mediumDate' }}</span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center">
+                  <div class="p-2 bg-zinc-50/50 dark:bg-zinc-950/40 rounded-lg border border-zinc-100 dark:border-zinc-800/80">
+                    <span class="block text-[10px] font-bold text-zinc-400">Nitrogen</span>
+                    <span class="block font-extrabold text-zinc-800 dark:text-white mt-1">{{ sample.nitrogenPpm }} ppm</span>
+                  </div>
+                  <div class="p-2 bg-zinc-50/50 dark:bg-zinc-950/40 rounded-lg border border-zinc-100 dark:border-zinc-800/80">
+                    <span class="block text-[10px] font-bold text-zinc-400">Phosphorus</span>
+                    <span class="block font-extrabold text-zinc-800 dark:text-white mt-1">{{ sample.phosphorusPpm }} ppm</span>
+                  </div>
+                  <div class="p-2 bg-zinc-50/50 dark:bg-zinc-950/40 rounded-lg border border-zinc-100 dark:border-zinc-800/80">
+                    <span class="block text-[10px] font-bold text-zinc-400">Potassium</span>
+                    <span class="block font-extrabold text-zinc-800 dark:text-white mt-1">{{ sample.potassiumPpm }} ppm</span>
+                  </div>
+                </div>
+
+                <div class="flex justify-between border-t border-zinc-100 dark:border-zinc-800 pt-2.5 text-zinc-500">
+                  <span>Organic Matter %</span>
+                  <span class="font-bold text-zinc-800 dark:text-zinc-100">{{ sample.organicMatterPct }}%</span>
+                </div>
+                <div class="flex justify-between text-zinc-500">
+                  <span>Soil pH Index</span>
+                  <span class="font-bold text-zinc-800 dark:text-zinc-100">{{ sample.ph }} pH</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+      </div>
+
+      <!-- Chronological Unified Field History Timeline (Right Split) -->
+      <div class="lg:col-span-8 space-y-4">
+        
+        <div class="bg-white border border-zinc-200 rounded-xl shadow-sm p-6 dark:bg-zinc-900 dark:border-zinc-800">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4.5 mb-6 gap-4">
+            <div>
+              <h3 class="font-extrabold text-zinc-900 dark:text-white text-base">Field Activity & Operations Log</h3>
+              <p class="text-xs text-zinc-500 mt-0.5">Chronological record of scouts, water operations, tissue tests, and pesticide treatments</p>
+            </div>
+
+            <!-- Activity legend filters -->
+            <div class="flex flex-wrap gap-1.5 shrink-0">
+              <span class="px-2.5 py-1 text-[10px] font-bold uppercase rounded bg-zinc-50 border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800 select-none">
+                {{ timelineData().length }} Events Total
+              </span>
+            </div>
+          </div>
+
+          <!-- Vertical Timeline stream -->
+          <div class="flow-root">
+            <ul role="list" class="-mb-8">
+              @if (timelineLoading()) {
+                <div class="space-y-4">
+                  <app-skeleton type="text" />
+                  <app-skeleton type="text" />
+                </div>
+              } @else if (timelineData().length === 0) {
+                <div class="py-16 text-center text-zinc-400 text-sm">
+                  <svg class="w-10 h-10 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                  </svg>
+                  No registered activities found for this field coordinate.
+                </div>
+              } @else {
+                @for (event of timelineData(); track event.id; let last = $last) {
+                  <li>
+                    <div class="relative pb-8">
+                      @if (!last) {
+                        <span class="absolute top-5 left-5 -ml-px h-full w-0.5 bg-zinc-100 dark:bg-zinc-800" aria-hidden="true"></span>
+                      }
+
+                      <div class="relative flex items-start space-x-4">
+                        <!-- Icon Circle tailored by Event Type -->
+                        <div 
+                          class="relative w-10 h-10 rounded-full flex items-center justify-center shrink-0 border"
+                          [class.bg-emerald-50]="event.type === 'scouting'"
+                          [class.border-emerald-200]="event.type === 'scouting'"
+                          [class.text-emerald-600]="event.type === 'scouting'"
+                          [class.dark:bg-emerald-950/20]="event.type === 'scouting'"
+                          [class.dark:border-emerald-900/50]="event.type === 'scouting'"
+                          [class.dark:text-emerald-400]="event.type === 'scouting'"
+
+                          [class.bg-sky-50]="event.type === 'irrigation'"
+                          [class.border-sky-200]="event.type === 'irrigation'"
+                          [class.text-sky-600]="event.type === 'irrigation'"
+                          [class.dark:bg-sky-950/20]="event.type === 'irrigation'"
+                          [class.dark:border-sky-900/50]="event.type === 'irrigation'"
+                          [class.dark:text-sky-400]="event.type === 'irrigation'"
+
+                          [class.bg-amber-50]="event.type === 'laboratory'"
+                          [class.border-amber-200]="event.type === 'laboratory'"
+                          [class.text-amber-600]="event.type === 'laboratory'"
+                          [class.dark:bg-amber-950/20]="event.type === 'laboratory'"
+                          [class.dark:border-amber-900/50]="event.type === 'laboratory'"
+                          [class.dark:text-amber-400]="event.type === 'laboratory'"
+
+                          [class.bg-rose-50]="event.type === 'treatment'"
+                          [class.border-rose-200]="event.type === 'treatment'"
+                          [class.text-rose-600]="event.type === 'treatment'"
+                          [class.dark:bg-rose-950/20]="event.type === 'treatment'"
+                          [class.dark:border-rose-900/50]="event.type === 'treatment'"
+                          [class.dark:text-rose-400]="event.type === 'treatment'"
+
+                          [class.bg-violet-50]="event.type === 'harvest'"
+                          [class.border-violet-200]="event.type === 'harvest'"
+                          [class.text-violet-600]="event.type === 'harvest'"
+                          [class.dark:bg-violet-950/20]="event.type === 'harvest'"
+                          [class.dark:border-violet-900/50]="event.type === 'harvest'"
+                          [class.dark:text-violet-400]="event.type === 'harvest'"
+                        >
+                          @switch (event.type) {
+                            @case ('scouting') {
+                              <!-- Bug/Eye scouting icon -->
+                              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                              </svg>
+                            }
+                            @case ('irrigation') {
+                              <!-- Water droplet -->
+                              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                              </svg>
+                            }
+                            @case ('laboratory') {
+                              <!-- Test Beaker flask -->
+                              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v17.792m0-17.792a9.003 9.003 0 0 0-7.5 8.896H9.75m0-8.896a9.003 9.003 0 0 1 7.5 8.896H9.75m0 0H21.25M9.75 20.896H21.25" />
+                              </svg>
+                            }
+                            @case ('treatment') {
+                              <!-- Spray material order -->
+                              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            }
+                            @case ('harvest') {
+                              <!-- Harvest Yield tractor/record -->
+                              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m9-9H3" />
+                              </svg>
+                            }
+                          }
+                        </div>
+
+                        <!-- Details card panel -->
+                        <div class="min-w-0 flex-1 bg-zinc-50/50 dark:bg-zinc-800/10 border border-zinc-100/50 dark:border-zinc-800 rounded-xl p-4">
+                          <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                            <div>
+                              <span class="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block">{{ event.title }}</span>
+                              <h4 class="font-extrabold text-zinc-900 dark:text-white text-sm mt-0.5">{{ event.subtitle }}</h4>
+                            </div>
+                            <span class="text-[10px] text-zinc-400 font-semibold bg-white dark:bg-zinc-900 px-2 py-0.5 rounded border border-zinc-100 dark:border-zinc-800 shadow-3xs">
+                              {{ event.date | date:'mediumDate' }}
+                            </span>
+                          </div>
+
+                          @if (event.description) {
+                            <p class="mt-2.5 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed italic">
+                              "{{ event.description }}"
+                            </p>
+                          }
+
+                          <!-- Tailored metrics inline metadata -->
+                          @if (event.metadata; as meta) {
+                            <div class="mt-3 flex flex-wrap gap-1.5">
+                              @for (entry of meta | keyvalue; track entry.key) {
+                                <span class="px-2 py-0.5 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
+                                  {{ entry.key }}: <span class="text-zinc-900 dark:text-white font-extrabold">{{ entry.value }}</span>
+                                </span>
+                              }
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                }
+              }
+            </ul>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  }
+
+</div>
+
+<!-- Interactive Modal for Adding a New Field -->
+<app-modal 
+  [isOpen]="isAddFieldModalOpen()" 
+  title="Register New Field Boundary" 
+  subtitle="Complete CA county GIS registry requirements"
+  (closed)="closeAddFieldModal()"
+>
+  <form [formGroup]="fieldForm" (ngSubmit)="submitFieldForm()" class="space-y-4">
+    
+    <div>
+      <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Field Name</label>
+      <input 
+        type="text" 
+        formControlName="name"
+        placeholder="e.g. Sierra Almonds - South Block"
+        class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+      >
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Crop Category</label>
+        <select 
+          formControlName="crop"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <option value="Almonds">Almonds</option>
+          <option value="Pistachios">Pistachios</option>
+          <option value="Wine Grapes">Wine Grapes</option>
+          <option value="Processing Tomatoes">Processing Tomatoes</option>
+          <option value="Alfalfa">Alfalfa</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Variety Name</label>
+        <input 
+          type="text" 
+          formControlName="variety"
+          placeholder="e.g. Nonpareil / Monterey"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">Acreage Area (Acres)</label>
+        <input 
+          type="number" 
+          formControlName="areaAcres"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">County District</label>
+        <select 
+          formControlName="county"
+          class="w-full text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 focus:border-ag-green-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+        >
+          <option value="Fresno">Fresno</option>
+          <option value="Kern">Kern</option>
+          <option value="Yolo">Yolo</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3 text-xs leading-relaxed text-zinc-500">
+      * Note: Registered fields automatically inherit standard mock California polygon coordinates centered inside the selected county for mapping.
+    </div>
+
+    <div actions class="flex items-center gap-2">
+      <button 
+        type="submit"
+        [disabled]="fieldForm.invalid"
+        class="px-4 py-2 text-sm font-bold text-white bg-ag-green-600 hover:bg-ag-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors dark:bg-ag-green-700 dark:hover:bg-ag-green-800 flex items-center gap-1.5 cursor-pointer"
+      >
+        Create Entry
+      </button>
+    </div>
+
+  </form>
+</app-modal>

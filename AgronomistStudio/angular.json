@@ -24,7 +24,8 @@
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "allowedCommonJsDependencies": [
-              "shared"
+              "shared",
+              "maplibre-gl"
             ],
             "assets": [
               {
