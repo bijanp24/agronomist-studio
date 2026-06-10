@@ -2,8 +2,8 @@ import { inject, computed } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap } from 'rxjs';
-import { Field } from '../models/field.model';
-import { MockDataService } from '../services/mock-data.service';
+import { Field } from 'shared';
+import { RanchesFieldsApi } from '../services/api/ranches-fields.api';
 
 export interface FieldState {
   fields: Field[];
@@ -26,15 +26,15 @@ export const FieldStore = signalStore(
     needsAttentionFields: computed(() => fields().filter(f => f.status === 'needs-attention')),
     healthyFields: computed(() => fields().filter(f => f.status === 'healthy')),
   })),
-  withMethods((store, mockDataService = inject(MockDataService)) => ({
+  withMethods((store, ranchesFieldsApi = inject(RanchesFieldsApi)) => ({
     loadFields: rxMethod<void>(
       pipe(
         tap(() => patchState(store, { isLoading: true, error: null })),
         switchMap(() => {
-          return mockDataService.getFields().pipe(
+          return ranchesFieldsApi.getFields().pipe(
             tap({
               next: (fields) => patchState(store, { fields, isLoading: false }),
-              error: (err) => patchState(store, { error: err.message, isLoading: false }),
+              error: (err: any) => patchState(store, { error: err.message || 'Unknown error', isLoading: false }),
             })
           );
         })
