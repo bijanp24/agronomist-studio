@@ -8,6 +8,7 @@ import pestRouter from './routes/pest.routes';
 import nutrientsRouter from './routes/nutrients.routes';
 import planningRouter from './routes/planning.routes';
 import agronomyRouter from './routes/agronomy.routes';
+import mlRouter from './routes/ml.routes';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware';
 
 const app = express();
@@ -57,6 +58,7 @@ app.use('/api', pestRouter);
 app.use('/api', nutrientsRouter);
 app.use('/api', planningRouter);
 app.use('/api', agronomyRouter);
+app.use('/api', mlRouter);
 
 // --- ERROR HANDLING MIDDLEWARE ---
 app.use(notFoundHandler);
