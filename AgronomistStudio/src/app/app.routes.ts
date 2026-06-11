@@ -15,6 +15,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/fields/fields')
   },
   {
+    path: 'gis',
+    loadComponent: () => import('./pages/gis/gis')
+  },
+  {
     path: 'scouting',
     loadComponent: () => import('./pages/scouting/scouting')
   },

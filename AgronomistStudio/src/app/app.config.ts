@@ -13,6 +13,7 @@ import { PestPcaApi } from './core/services/api/pest-pca.api';
 import { NutrientsApi } from './core/services/api/nutrients.api';
 import { CropPlanningApi } from './core/services/api/crop-planning.api';
 import { AgronomyApi } from './core/services/api/agronomy.api';
+import { SpatialApi } from './core/services/api/spatial.api';
 
 // Import implementations
 import { InMemoryRanchesFieldsService } from './core/services/api/in-memory/in-memory-ranches-fields.service';
@@ -35,6 +36,9 @@ import { HttpCropPlanningService } from './core/services/api/http/http-crop-plan
 
 import { InMemoryAgronomyService } from './core/services/api/in-memory/in-memory-agronomy.service';
 import { HttpAgronomyService } from './core/services/api/http/http-agronomy.service';
+
+import { InMemorySpatialService } from './core/services/api/in-memory/in-memory-spatial.service';
+import { HttpSpatialService } from './core/services/api/http/http-spatial.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -70,6 +74,10 @@ export const appConfig: ApplicationConfig = {
     {
       provide: AgronomyApi,
       useClass: environment.dataSource === 'http' ? HttpAgronomyService : InMemoryAgronomyService
+    },
+    {
+      provide: SpatialApi,
+      useClass: environment.dataSource === 'http' ? HttpSpatialService : InMemorySpatialService
     }
   ]
 };
