@@ -19,6 +19,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/gis/gis')
   },
   {
+    path: 'ml-insights',
+    loadComponent: () => import('./pages/ml-insights/ml-insights')
+  },
+  {
     path: 'scouting',
     loadComponent: () => import('./pages/scouting/scouting')
   },

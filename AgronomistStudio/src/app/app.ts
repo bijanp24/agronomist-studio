@@ -36,6 +36,8 @@ export class App implements OnInit {
         this.currentRouteName.set('Fields & Ranches');
       } else if (url.includes('/gis')) {
         this.currentRouteName.set('GIS Spatial Engine');
+      } else if (url.includes('/ml-insights')) {
+        this.currentRouteName.set('ML Predictive Insights');
       } else if (url.includes('/scouting')) {
         this.currentRouteName.set('Scouting Reports');
       } else if (url.includes('/water')) {

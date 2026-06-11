@@ -14,6 +14,7 @@ import { NutrientsApi } from './core/services/api/nutrients.api';
 import { CropPlanningApi } from './core/services/api/crop-planning.api';
 import { AgronomyApi } from './core/services/api/agronomy.api';
 import { SpatialApi } from './core/services/api/spatial.api';
+import { MlApi } from './core/services/api/ml.api';
 
 // Import implementations
 import { InMemoryRanchesFieldsService } from './core/services/api/in-memory/in-memory-ranches-fields.service';
@@ -39,6 +40,9 @@ import { HttpAgronomyService } from './core/services/api/http/http-agronomy.serv
 
 import { InMemorySpatialService } from './core/services/api/in-memory/in-memory-spatial.service';
 import { HttpSpatialService } from './core/services/api/http/http-spatial.service';
+
+import { InMemoryMlService } from './core/services/api/in-memory/in-memory-ml.service';
+import { HttpMlService } from './core/services/api/http/http-ml.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -78,6 +82,10 @@ export const appConfig: ApplicationConfig = {
     {
       provide: SpatialApi,
       useClass: environment.dataSource === 'http' ? HttpSpatialService : InMemorySpatialService
+    },
+    {
+      provide: MlApi,
+      useClass: environment.dataSource === 'http' ? HttpMlService : InMemoryMlService
     }
   ]
 };
