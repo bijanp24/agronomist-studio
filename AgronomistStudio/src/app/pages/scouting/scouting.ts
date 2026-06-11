@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { forkJoin } from 'rxjs';
 import { RanchStore } from '../../core/store/ranch.store';
 import { FieldStore } from '../../core/store/field.store';
+import { ScoutingStore } from '../../core/store/scouting.store';
 import { ScoutingApi } from '../../core/services/api/scouting.api';
 import { RanchesFieldsApi } from '../../core/services/api/ranches-fields.api';
 import { ToastService } from '../../shared/services/toast/toast.service';
@@ -32,6 +33,7 @@ export interface FormattedScoutingReport extends ScoutingReport {
 })
 export default class ScoutingPage implements OnInit {
   protected readonly ranchStore = inject(RanchStore);
+  protected readonly scoutingStore = inject(ScoutingStore);
   protected readonly fieldStore = inject(FieldStore);
   private readonly scoutingApi = inject(ScoutingApi);
   private readonly ranchesFieldsApi = inject(RanchesFieldsApi);
@@ -39,8 +41,8 @@ export default class ScoutingPage implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   // Directory loading/data states
-  protected readonly rawReports = signal<ScoutingReport[]>([]);
-  protected readonly loading = signal<boolean>(false);
+  protected readonly rawReports = this.scoutingStore.reports;
+  protected readonly loading = this.scoutingStore.isLoading;
 
   // Search & Filters state
   protected readonly searchQuery = signal<string>('');
@@ -71,20 +73,7 @@ export default class ScoutingPage implements OnInit {
   }
 
   private loadScoutingFeed(ranchId: string | null) {
-    this.loading.set(true);
-    
-    // Always fetch all reports (filtering is handled dynamically on client based on current active ranch fields)
-    this.scoutingApi.getReports().subscribe({
-      next: (reports) => {
-        this.rawReports.set(reports);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to load scouting records', err);
-        this.toastService.danger('Failed to load scouting logs. Please reload.');
-        this.loading.set(false);
-      }
-    });
+    this.scoutingStore.loadReports();
   }
 
   // --- Dynamic Search & Filter computations ---
@@ -343,13 +332,10 @@ export default class ScoutingPage implements OnInit {
     };
 
     this.scoutingApi.createReport(payload).subscribe({
-      next: () => {
+      next: (newReport) => {
         this.toastService.success(`Scouting Report registered successfully! Alert states recalculated.`);
         this.closeAddReportModal();
-        
-        // Refresh local cache listing
-        const ranchId = this.ranchStore.selectedRanchId();
-        this.loadScoutingFeed(ranchId);
+        this.scoutingStore.addReport(newReport);
       },
       error: (err) => {
         console.error('Failed to log scouting report', err);

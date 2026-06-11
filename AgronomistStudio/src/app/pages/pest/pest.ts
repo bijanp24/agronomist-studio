@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { forkJoin } from 'rxjs';
 import { RanchStore } from '../../core/store/ranch.store';
 import { FieldStore } from '../../core/store/field.store';
+import { PestStore } from '../../core/store/pest.store';
 import { PestPcaApi } from '../../core/services/api/pest-pca.api';
 import { ToastService } from '../../shared/services/toast/toast.service';
 import { PestObservation, SprayRecommendation, PesticideUseReport, SprayRecommendationMaterial, Field } from 'shared';
@@ -37,6 +38,7 @@ export interface FormattedPesticideUseReport extends PesticideUseReport {
   templateUrl: './pest.html'
 })
 export default class PestPage implements OnInit {
+  protected readonly pestStore = inject(PestStore);
   protected readonly ranchStore = inject(RanchStore);
   protected readonly fieldStore = inject(FieldStore);
   private readonly pestPcaApi = inject(PestPcaApi);
@@ -44,10 +46,10 @@ export default class PestPage implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   // Core API dataset cache signals
-  protected readonly pestObservations = signal<PestObservation[]>([]);
-  protected readonly sprayRecommendations = signal<SprayRecommendation[]>([]);
-  protected readonly pesticideUseReports = signal<PesticideUseReport[]>([]);
-  protected readonly loading = signal<boolean>(false);
+  protected readonly pestObservations = this.pestStore.pestObservations;
+  protected readonly sprayRecommendations = this.pestStore.sprayRecommendations;
+  protected readonly pesticideUseReports = this.pestStore.pesticideUseReports;
+  protected readonly loading = this.pestStore.isLoading;
 
   // Detail Modal inspection states
   protected readonly selectedRecommendation = signal<FormattedSprayRecommendation | null>(null);
@@ -92,29 +94,7 @@ export default class PestPage implements OnInit {
   }
 
   private loadPestDiagnostics(ranchId: string | null) {
-    this.loading.set(true);
-
-    const observations$ = this.pestPcaApi.getPestObservations();
-    const recommendations$ = this.pestPcaApi.getSprayRecommendations();
-    const purs$ = this.pestPcaApi.getPesticideUseReports();
-
-    forkJoin({
-      obs: observations$,
-      recs: recommendations$,
-      purs: purs$
-    }).subscribe({
-      next: (res) => {
-        this.pestObservations.set(res.obs);
-        this.sprayRecommendations.set(res.recs);
-        this.pesticideUseReports.set(res.purs);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to load pest/PCA compliance indices', err);
-        this.toastService.danger('Failed to sync compliance registries. Please reload page.');
-        this.loading.set(false);
-      }
-    });
+    this.pestStore.loadPestDiagnostics(ranchId);
   }
 
   // --- Dynamic Search & Filter computations ---
@@ -232,13 +212,10 @@ export default class PestPage implements OnInit {
   // Signs a draft recommendation, approving the spray material list
   protected approveRecommendation(rec: FormattedSprayRecommendation) {
     this.pestPcaApi.updateSprayRecommendation(rec.id, { status: 'approved' }).subscribe({
-      next: () => {
+      next: (updatedRec) => {
         this.toastService.success(`PCA Material Recommendation signed & approved! Submission logged.`);
         this.closeRecommendationDetail();
-        
-        // Refresh local cache list
-        const ranchId = this.ranchStore.selectedRanchId();
-        this.loadPestDiagnostics(ranchId);
+        this.pestStore.updateSprayRecommendation(updatedRec);
       },
       error: () => {
         this.toastService.danger('Failed to sign material order. Please retry.');
@@ -291,12 +268,11 @@ export default class PestPage implements OnInit {
         const purSubmissions$ = purPayloads.map(pur => this.pestPcaApi.createPesticideUseReport(pur));
         
         forkJoin(purSubmissions$).subscribe({
-          next: () => {
+          next: (newPurs) => {
             this.toastService.success(`Treatment logged! Pesticide Use Reports successfully drafted for DPR submission.`);
             this.closeRecommendationDetail();
-            
-            const ranchId = this.ranchStore.selectedRanchId();
-            this.loadPestDiagnostics(ranchId);
+            this.pestStore.updateSprayRecommendation(updatedRec);
+            newPurs.forEach(newPur => this.pestStore.addPesticideUseReport(newPur));
           },
           error: (err) => {
             console.error('Failed to automatically draft California PUR reports', err);
@@ -316,20 +292,14 @@ export default class PestPage implements OnInit {
     this.toastService.info('Submitting compliance document to County Commissioner...');
     
     // Simulate API update to 'submitted'
-    this.pesticideUseReports.update(list => {
-      return list.map(item => {
-        if (item.id === pur.id) {
-          return {
-            ...item,
-            status: 'submitted' as const,
-            submittedAt: new Date().toISOString()
-          };
-        }
-        return item;
-      });
-    });
+    const updatedPur = {
+      ...pur,
+      status: 'submitted' as const,
+      submittedAt: new Date().toISOString()
+    };
 
     setTimeout(() => {
+      this.pestStore.updatePesticideUseReport(updatedPur);
       this.toastService.success(`DPR Report submitted! Legal record registered under county commissioner system.`);
     }, 800);
   }
@@ -440,13 +410,10 @@ export default class PestPage implements OnInit {
     };
 
     this.pestPcaApi.createSprayRecommendation(payload).subscribe({
-      next: () => {
+      next: (newRec) => {
         this.toastService.success(`PCA Treatment Recommendation written successfully! Queued as draft.`);
         this.closeAddRecommendationModal();
-        
-        // Refresh local listings cache
-        const ranchId = this.ranchStore.selectedRanchId();
-        this.loadPestDiagnostics(ranchId);
+        this.pestStore.addSprayRecommendation(newRec);
       },
       error: (err) => {
         console.error('Failed to create PCA written recommendation', err);

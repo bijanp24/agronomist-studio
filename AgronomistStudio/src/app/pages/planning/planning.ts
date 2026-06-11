@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { forkJoin } from 'rxjs';
 import { RanchStore } from '../../core/store/ranch.store';
 import { FieldStore } from '../../core/store/field.store';
+import { PlanningStore } from '../../core/store/planning.store';
 import { CropPlanningApi } from '../../core/services/api/crop-planning.api';
 import { ToastService } from '../../shared/services/toast/toast.service';
 import { PlantingPlan, HarvestRecord, YieldRecord } from 'shared';
@@ -38,6 +39,7 @@ export interface FormattedYieldRecord extends YieldRecord {
   templateUrl: './planning.html'
 })
 export default class PlanningPage implements OnInit {
+  protected readonly planningStore = inject(PlanningStore);
   protected readonly ranchStore = inject(RanchStore);
   protected readonly fieldStore = inject(FieldStore);
   private readonly cropPlanningApi = inject(CropPlanningApi);
@@ -45,10 +47,10 @@ export default class PlanningPage implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   // Cached API state signals
-  protected readonly plantingPlans = signal<PlantingPlan[]>([]);
-  protected readonly harvestRecords = signal<HarvestRecord[]>([]);
-  protected readonly yieldRecords = signal<YieldRecord[]>([]);
-  protected readonly loading = signal<boolean>(false);
+  protected readonly plantingPlans = this.planningStore.plantingPlans;
+  protected readonly harvestRecords = this.planningStore.harvestRecords;
+  protected readonly yieldRecords = this.planningStore.yieldRecords;
+  protected readonly loading = this.planningStore.isLoading;
 
   // Modal view states
   protected readonly isPlantingModalOpen = signal<boolean>(false);
@@ -95,29 +97,7 @@ export default class PlanningPage implements OnInit {
   }
 
   private loadPlanningData(ranchId: string | null) {
-    this.loading.set(true);
-
-    const plans$ = this.cropPlanningApi.getPlantingPlans();
-    const harvests$ = this.cropPlanningApi.getHarvestRecords();
-    const yields$ = this.cropPlanningApi.getYieldRecords();
-
-    forkJoin({
-      plans: plans$,
-      harvests: harvests$,
-      yields: yields$
-    }).subscribe({
-      next: (res) => {
-        this.plantingPlans.set(res.plans);
-        this.harvestRecords.set(res.harvests);
-        this.yieldRecords.set(res.yields);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to load crop planning streams', err);
-        this.toastService.danger('Failed to synchronize crop scheduling datasets.');
-        this.loading.set(false);
-      }
-    });
+    this.planningStore.loadPlanningData(ranchId);
   }
 
   // --- Search & Filter computations ---
@@ -282,7 +262,8 @@ export default class PlanningPage implements OnInit {
     if (this.plantingForm.invalid) return;
 
     const val = this.plantingForm.value;
-    const payload: Omit<PlantingPlan, 'id'> = {
+    const payload: PlantingPlan = {
+      id: 'plan-' + Math.random().toString(36).substring(2, 9),
       fieldId: val.fieldId,
       cropYear: val.cropYear,
       crop: val.crop,
@@ -292,8 +273,7 @@ export default class PlanningPage implements OnInit {
       status: 'planned'
     };
 
-    // Simulate creation locally
-    this.plantingPlans.update(list => [payload as PlantingPlan, ...list]);
+    this.planningStore.addPlantingPlan(payload);
     this.toastService.success(`New planting cycle scheduled for crop year ${val.cropYear}!`);
     this.closeAddPlantingModal();
   }
@@ -316,7 +296,8 @@ export default class PlanningPage implements OnInit {
     if (this.harvestForm.invalid) return;
 
     const val = this.harvestForm.value;
-    const payload: Omit<HarvestRecord, 'id'> = {
+    const payload: HarvestRecord = {
+      id: 'harvest-' + Math.random().toString(36).substring(2, 9),
       fieldId: val.fieldId,
       harvestDate: val.harvestDate,
       cropYear: val.cropYear,
@@ -328,8 +309,7 @@ export default class PlanningPage implements OnInit {
       operatorName: val.operatorName
     };
 
-    // Simulate saving locally
-    this.harvestRecords.update(list => [payload as HarvestRecord, ...list]);
+    this.planningStore.addHarvestRecord(payload);
 
     // Also simulate creating a corresponding YieldRecord to build up the baseline benchmarking graph!
     const fields = this.fieldStore.fields();
@@ -339,7 +319,8 @@ export default class PlanningPage implements OnInit {
     // Average yield per acre = total yield / acres
     const yieldPerAcre = parseFloat((val.totalYieldAmount / acreage).toFixed(2));
 
-    const yieldPayload: Omit<YieldRecord, 'id'> = {
+    const yieldPayload: YieldRecord = {
+      id: 'yield-' + Math.random().toString(36).substring(2, 9),
       fieldId: val.fieldId,
       cropYear: val.cropYear,
       crop: val.crop,
@@ -348,7 +329,7 @@ export default class PlanningPage implements OnInit {
       historicalAverage: yieldPerAcre * 0.95 // simulate baseline
     };
 
-    this.yieldRecords.update(list => [yieldPayload as YieldRecord, ...list]);
+    this.planningStore.addYieldRecord(yieldPayload);
 
     this.toastService.success(`Harvest operation registered successfully! Bulk weight yield recorded.`);
     this.closeAddHarvestModal();
@@ -357,18 +338,12 @@ export default class PlanningPage implements OnInit {
   // --- Inline action shortcuts ---
 
   protected markAsPlanted(plan: FormattedPlantingPlan) {
-    this.plantingPlans.update(list => {
-      return list.map(p => {
-        if (p.id === plan.id) {
-          return {
-            ...p,
-            status: 'planted',
-            actualPlantingDate: new Date().toISOString().substring(0, 10)
-          };
-        }
-        return p;
-      });
-    });
+    const updatedPlan: PlantingPlan = {
+      ...plan,
+      status: 'planted',
+      actualPlantingDate: new Date().toISOString().substring(0, 10)
+    };
+    this.planningStore.updatePlantingPlan(updatedPlan);
     this.toastService.success(`Field block status upgraded to 'Planted'! Active tracking initialized.`);
   }
 
