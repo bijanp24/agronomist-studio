@@ -11,6 +11,7 @@ import { ScoutingApi } from '../../core/services/api/scouting.api';
 import { PestPcaApi } from '../../core/services/api/pest-pca.api';
 import { NutrientsApi } from '../../core/services/api/nutrients.api';
 import { CropPlanningApi } from '../../core/services/api/crop-planning.api';
+import { AgronomyApi, AgronomyLocationSummary } from '../../core/services/api/agronomy.api';
 import { ToastService } from '../../shared/services/toast/toast.service';
 import { Field, SoilSample, TissueSample, NitrogenPlan, IrrigationEvent, ScoutingReport } from 'shared';
 import { BadgeComponent, DataTableComponent, ModalComponent, SkeletonComponent } from '../../shared';
@@ -49,6 +50,7 @@ export default class FieldsPage implements AfterViewInit, OnDestroy {
   private readonly pestPcaApi = inject(PestPcaApi);
   private readonly nutrientsApi = inject(NutrientsApi);
   private readonly cropPlanningApi = inject(CropPlanningApi);
+  private readonly agronomyApi = inject(AgronomyApi);
   private readonly toastService = inject(ToastService);
   private readonly fb = inject(FormBuilder);
 
@@ -68,6 +70,9 @@ export default class FieldsPage implements AfterViewInit, OnDestroy {
   protected readonly selectedSoilSamples = signal<SoilSample[]>([]);
   protected readonly selectedTissueSamples = signal<TissueSample[]>([]);
   protected readonly selectedNitrogenPlan = signal<NitrogenPlan | null>(null);
+  protected readonly selectedAgronomySummary = signal<AgronomyLocationSummary | null>(null);
+  protected readonly agronomyLoading = signal<boolean>(false);
+  protected readonly agronomyError = signal<string | null>(null);
 
   // Field Activity Timeline signals
   protected readonly timelineData = signal<TimelineEvent[]>([]);
@@ -151,13 +156,35 @@ export default class FieldsPage implements AfterViewInit, OnDestroy {
     this.timelineLoading.set(true);
 
     // Zoom Map to selected Field polygon
-    if (this.map && field.boundaryJson) {
+    let lat = 36.7783; // nominal central CA
+    let lon = -119.4179;
+    if (field.boundaryJson) {
       const coords = field.boundaryJson.coordinates[0];
       const bounds = coords.reduce((acc, coord) => {
         return acc.extend(coord as [number, number]);
       }, new maplibregl.LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]));
       this.map.fitBounds(bounds, { padding: 80, maxZoom: 16 });
+
+      const midIdx = Math.floor(coords.length / 2);
+      lon = coords[midIdx][0];
+      lat = coords[midIdx][1];
     }
+
+    // Fetch live agronomy gateway recommendations for coordinates
+    this.agronomyLoading.set(true);
+    this.agronomyError.set(null);
+    this.selectedAgronomySummary.set(null);
+    this.agronomyApi.getLocationSummary(lat, lon, undefined, field.crop).subscribe({
+      next: (summary) => {
+        this.selectedAgronomySummary.set(summary);
+        this.agronomyLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load agronomy live summary', err);
+        this.agronomyError.set('Failed to fetch live California data feeds.');
+        this.agronomyLoading.set(false);
+      }
+    });
 
     // Parallel fetch all field operations records with safe fallback handlers
     const scouting$ = this.scoutingApi.getReports(field.id).pipe(catchError(() => of([] as ScoutingReport[])));
@@ -301,6 +328,8 @@ export default class FieldsPage implements AfterViewInit, OnDestroy {
     this.selectedSoilSamples.set([]);
     this.selectedTissueSamples.set([]);
     this.selectedNitrogenPlan.set(null);
+    this.selectedAgronomySummary.set(null);
+    this.agronomyError.set(null);
     this.timelineData.set([]);
     this.resetMapCamera();
   }

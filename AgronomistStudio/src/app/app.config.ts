@@ -12,6 +12,7 @@ import { WaterApi } from './core/services/api/water.api';
 import { PestPcaApi } from './core/services/api/pest-pca.api';
 import { NutrientsApi } from './core/services/api/nutrients.api';
 import { CropPlanningApi } from './core/services/api/crop-planning.api';
+import { AgronomyApi } from './core/services/api/agronomy.api';
 
 // Import implementations
 import { InMemoryRanchesFieldsService } from './core/services/api/in-memory/in-memory-ranches-fields.service';
@@ -31,6 +32,9 @@ import { HttpNutrientsService } from './core/services/api/http/http-nutrients.se
 
 import { InMemoryCropPlanningService } from './core/services/api/in-memory/in-memory-crop-planning.service';
 import { HttpCropPlanningService } from './core/services/api/http/http-crop-planning.service';
+
+import { InMemoryAgronomyService } from './core/services/api/in-memory/in-memory-agronomy.service';
+import { HttpAgronomyService } from './core/services/api/http/http-agronomy.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -62,6 +66,10 @@ export const appConfig: ApplicationConfig = {
     {
       provide: CropPlanningApi,
       useClass: environment.dataSource === 'http' ? HttpCropPlanningService : InMemoryCropPlanningService
+    },
+    {
+      provide: AgronomyApi,
+      useClass: environment.dataSource === 'http' ? HttpAgronomyService : InMemoryAgronomyService
     }
   ]
 };
