@@ -65,11 +65,12 @@ describe('cimis normalization', () => {
     expect(reading?.eto).toBe(0.26);
   });
 
-  it('returns empty array when no app key is configured', async () => {
+  it('returns mocked ETo history when no app key is configured', async () => {
     delete process.env.CIMIS_APP_KEY;
     delete process.env.CIMIS_APPKEY;
     const result = await getEtoHistory({ latitude: 36, longitude: -119 });
-    expect(result).toEqual([]);
+    expect(result).not.toEqual([]);
+    expect(result[0].source).toBe('CIMIS (mocked)');
   });
 });
 
