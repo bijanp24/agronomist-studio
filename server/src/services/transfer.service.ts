@@ -576,14 +576,12 @@ export class TransferService {
         const newScout: ScoutingReport = {
           id: op.id || `scout-${Date.now()}-${Math.random()}`,
           fieldId: targetFieldId!,
-          scoutName: 'Data Hub Importer',
+          scouterName: 'Data Hub Importer',
           scoutedAt: `${op.date}T10:00:00Z`,
-          pestPressure: 'low',
-          diseasePressure: 'none',
-          weedPressure: 'low',
-          growthStage: 'V4',
-          canopyCoverPct: 45,
+          severity: 'low',
           notes: op.notes || 'Imported via Data Transfer Hub',
+          pestObservations: [],
+          cropStage: 'V4',
         };
         dbStore.scoutingReports.push(newScout);
         operationsAdded++;
@@ -592,15 +590,13 @@ export class TransferService {
           id: op.id || `soil-${Date.now()}-${Math.random()}`,
           fieldId: targetFieldId!,
           sampleDate: op.date || new Date().toISOString().split('T')[0],
-          depthInches: 12,
-          organicMatterPct: 2.1,
+          labSampleNumber: `DTH-${Date.now()}`,
           nitrogenPpm: 24,
           phosphorusPpm: 18,
           potassiumPpm: 145,
+          organicMatterPct: 2.1,
           ph: 6.8,
-          ecDsM: 1.2,
-          labName: 'AgLab Central',
-          notes: 'Imported via Data Transfer Hub',
+          status: 'optimal',
         };
         dbStore.soilSamples.push(newSoil);
         operationsAdded++;

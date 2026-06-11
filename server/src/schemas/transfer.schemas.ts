@@ -18,7 +18,7 @@ export const csvImportSchema = z.object({
 
 export const geoJsonImportSchema = z.object({
   importId: z.string().min(1, 'importId is required'),
-  geojson: z.any({ required_error: 'geojson is required' }),
+  geojson: z.any(),
   defaultFarmId: z.string().optional(),
 });
 
