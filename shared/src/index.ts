@@ -5,6 +5,9 @@ export * from './models/water';
 export * from './models/pest-pca';
 export * from './models/nutrients';
 export * from './models/crop-planning';
+export * from './models/ml';
+export * from './models/spatial';
+export * from './models/transfer';
 export * from './fixtures';
 
 export interface VersionInfo {

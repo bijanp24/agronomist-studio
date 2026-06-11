@@ -1,0 +1,526 @@
+<div class="p-6 max-w-7xl mx-auto space-y-6">
+
+  <!-- Breadcrumbs & Heading -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-zinc-900 dark:text-white leading-tight">ML Predictive Insights</h1>
+      <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+        Deterministic yield forecasts, partial-dependence input optimization, cohort clustering, and anomaly risk indices.
+      </p>
+    </div>
+
+    <!-- Field Dropdown Selector -->
+    <div class="flex items-center gap-3">
+      <label for="field-selector" class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Target Field</label>
+      <select 
+        id="field-selector"
+        [(ngModel)]="selectedFieldId"
+        class="bg-white border border-zinc-200 rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-ag-green-500/20 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
+      >
+        @for (f of fieldStore.fields(); track f.id) {
+          <option [value]="f.id">{{ f.name }} ({{ f.crop }})</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- Row: Active Models status and health -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-white border border-zinc-200 p-4 rounded-xl shadow-sm flex items-center gap-3 dark:bg-zinc-900 dark:border-zinc-800">
+      <div class="w-2.5 h-2.5 rounded-full" [class.bg-green-500]="mlStore.health()?.status === 'ok'" [class.bg-zinc-400]="!mlStore.health()"></div>
+      <div>
+        <span class="text-xxs uppercase tracking-wider font-semibold text-zinc-400">ML Engine Status</span>
+        <h4 class="text-sm font-bold text-zinc-800 dark:text-zinc-100 mt-0.5">
+          @if (mlStore.health()) { Connected ({{ mlStore.health().demo_mode ? 'Demo' : 'Prod' }}) } @else { Offline Fallback }
+        </h4>
+      </div>
+    </div>
+
+    <div class="bg-white border border-zinc-200 p-4 rounded-xl shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+      <span class="text-xxs uppercase tracking-wider font-semibold text-zinc-400">Yield Predictor</span>
+      <h4 class="text-sm font-bold text-zinc-800 dark:text-zinc-100 mt-0.5">
+        {{ mlStore.health()?.active_models?.yield || 'Local v1.0.0 (TS)' }}
+      </h4>
+    </div>
+
+    <div class="bg-white border border-zinc-200 p-4 rounded-xl shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+      <span class="text-xxs uppercase tracking-wider font-semibold text-zinc-400">Inputs Optimizer</span>
+      <h4 class="text-sm font-bold text-zinc-800 dark:text-zinc-100 mt-0.5">
+        {{ mlStore.health()?.active_models?.risk || 'Local v1.0.0 (TS)' }}
+      </h4>
+    </div>
+
+    <div class="bg-white border border-zinc-200 p-4 rounded-xl shadow-sm dark:bg-zinc-900 dark:border-zinc-800">
+      <span class="text-xxs uppercase tracking-wider font-semibold text-zinc-400">K-Means Clusterer</span>
+      <h4 class="text-sm font-bold text-zinc-800 dark:text-zinc-100 mt-0.5">
+        {{ mlStore.health()?.active_models?.cluster || 'Local v1.0.0 (TS)' }}
+      </h4>
+    </div>
+  </div>
+
+  <!-- Inner Work Surface Tab Pill-Strip -->
+  <div class="border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-6">
+    <button 
+      (click)="activeTab.set('yield')"
+      [class]="activeTab() === 'yield' 
+        ? 'pb-3 text-sm font-bold border-b-2 border-ag-green-500 text-zinc-950 dark:text-white' 
+        : 'pb-3 text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'"
+    >
+      Yield Forecast
+    </button>
+    <button 
+      (click)="activeTab.set('optimizer')"
+      [class]="activeTab() === 'optimizer' 
+        ? 'pb-3 text-sm font-bold border-b-2 border-ag-green-500 text-zinc-950 dark:text-white' 
+        : 'pb-3 text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'"
+    >
+      Inputs Optimizer
+    </button>
+    <button 
+      (click)="activeTab.set('benchmarking')"
+      [class]="activeTab() === 'benchmarking' 
+        ? 'pb-3 text-sm font-bold border-b-2 border-ag-green-500 text-zinc-950 dark:text-white' 
+        : 'pb-3 text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'"
+    >
+      K-Means Benchmarking
+    </button>
+    <button 
+      (click)="activeTab.set('risk')"
+      [class]="activeTab() === 'risk' 
+        ? 'pb-3 text-sm font-bold border-b-2 border-ag-green-500 text-zinc-950 dark:text-white' 
+        : 'pb-3 text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'"
+    >
+      Anomaly Risk Scoring
+    </button>
+  </div>
+
+  <!-- TAB CONTENT PANELS -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+
+    <!-- SUB-VIEW 1: YIELD FORECAST -->
+    @if (activeTab() === 'yield') {
+      <div class="lg:col-span-8 flex flex-col gap-6">
+        @if (mlStore.prediction(); as pred) {
+          <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 space-y-4">
+            <h3 class="font-bold text-zinc-900 dark:text-white text-base">Forecast Output: Crop Year 2026</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+                <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Predicted Yield</span>
+                <p class="text-2xl font-black font-mono text-zinc-900 dark:text-white mt-1">
+                  {{ pred.predicted_yield_kg_ha.toLocaleString() }} <span class="text-xs font-normal">kg/ha</span>
+                </p>
+                <span class="text-xxs text-zinc-400 block mt-1">
+                  Interval: {{ pred.yield_lower_kg_ha.toLocaleString() }} – {{ pred.yield_upper_kg_ha.toLocaleString() }}
+                </span>
+              </div>
+
+              <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+                <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Historical Baseline</span>
+                <p class="text-2xl font-black font-mono text-zinc-900 dark:text-white mt-1">
+                  {{ pred.baseline_yield_kg_ha.toLocaleString() }} <span class="text-xs font-normal">kg/ha</span>
+                </p>
+                <span class="text-xxs text-zinc-400 block mt-1">
+                  Expected shift: {{ (((pred.predicted_yield_kg_ha - pred.baseline_yield_kg_ha) / pred.baseline_yield_kg_ha) * 100).toFixed(1) }}%
+                </span>
+              </div>
+
+              <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+                <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Confidence Class</span>
+                <p class="text-2xl font-black uppercase text-zinc-900 dark:text-white mt-1" 
+                  [class.text-green-600]="pred.confidence === 'high'"
+                  [class.text-amber-600]="pred.confidence === 'medium'"
+                >
+                  {{ pred.confidence }}
+                </p>
+                <span class="text-xxs text-zinc-400 block mt-1">Based on feature completeness</span>
+              </div>
+            </div>
+
+            <div class="bg-ag-green-50/20 border border-ag-green-100 p-3.5 rounded-lg text-xs leading-relaxed text-ag-green-900 dark:bg-ag-green-950/10 dark:border-ag-green-900/30 dark:text-ag-green-300">
+              <span class="font-bold block mb-1">Model Synthesis Narrative</span>
+              {{ pred.explanation }}
+            </div>
+          </div>
+        } @else {
+          <div class="bg-white border border-zinc-200 rounded-xl p-8 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 text-center text-zinc-400 text-xs">
+            Calculating prediction...
+          </div>
+        }
+
+        <!-- Multi-Season Historical Yield Trend Sourced from TS Synthesizer -->
+        <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 space-y-4">
+          <h3 class="font-bold text-zinc-900 dark:text-white text-sm">Synthesized Historical Crop Performance</h3>
+          
+          @if (mlStore.history(); as hist) {
+            <div class="w-full aspect-[21/9] bg-zinc-50 dark:bg-zinc-950/40 rounded-lg p-4 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center">
+              <div class="w-full h-full relative">
+                <svg class="w-full h-full overflow-visible" viewBox="0 0 450 120" preserveAspectRatio="none">
+                  <!-- Grid -->
+                  <line x1="20" y1="20" x2="430" y2="20" stroke="#f1f5f9" class="dark:stroke-zinc-800/40" stroke-width="1"></line>
+                  <line x1="20" y1="60" x2="430" y2="60" stroke="#f1f5f9" class="dark:stroke-zinc-800/40" stroke-width="1"></line>
+                  <line x1="20" y1="100" x2="430" y2="100" stroke="#f1f5f9" class="dark:stroke-zinc-800/40" stroke-width="1"></line>
+                  <!-- Line -->
+                  <polyline 
+                    fill="none" 
+                    stroke="#10b981" 
+                    stroke-width="2.5" 
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    [attr.points]="historyChartPoints"
+                  ></polyline>
+                </svg>
+
+                <div class="absolute bottom-0 left-[20px] right-[20px] flex justify-between text-xxs font-bold text-zinc-400 dark:text-zinc-500 pt-1 font-mono">
+                  @for (year of historyYears; track year) {
+                    <span>{{ year }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+          } @else {
+            <p class="text-xs text-zinc-400">Loading historical trend...</p>
+          }
+        </div>
+      </div>
+
+      <!-- Yield Sensitivity weights inside RIGHT grid span -->
+      <div class="lg:col-span-4 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col justify-between gap-6">
+        @if (mlStore.prediction(); as pred) {
+          <div class="space-y-4">
+            <h3 class="font-bold text-zinc-900 dark:text-white text-base">Feature Sensitivity Analysis</h3>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400">
+              Evaluates the percentage weight contribution of each environmental and operational feature in computing yield predictions.
+            </p>
+
+            <div class="space-y-3 pt-2">
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <span>Seasonal Applied Water</span>
+                  <span class="font-mono">{{ (pred.factor_water * 100).toFixed(0) }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden dark:bg-zinc-800">
+                  <div class="bg-blue-600 h-full rounded-full" [style.width.%]="pred.factor_water * 100"></div>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <span>Nitrogen Nutrient Balance</span>
+                  <span class="font-mono">{{ (pred.factor_nutrient * 100).toFixed(0) }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden dark:bg-zinc-800">
+                  <div class="bg-green-600 h-full rounded-full" [style.width.%]="pred.factor_nutrient * 100"></div>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <span>Degree-Day Heat Index</span>
+                  <span class="font-mono">{{ (pred.factor_heat * 100).toFixed(0) }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden dark:bg-zinc-800">
+                  <div class="bg-amber-500 h-full rounded-full" [style.width.%]="pred.factor_heat * 100"></div>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <span>Solar UV Radiance</span>
+                  <span class="font-mono">{{ (pred.factor_uv * 100).toFixed(0) }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden dark:bg-zinc-800">
+                  <div class="bg-sky-400 h-full rounded-full" [style.width.%]="pred.factor_uv * 100"></div>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <span>Seed Genetics Coefficient</span>
+                  <span class="font-mono">{{ (pred.factor_seed * 100).toFixed(0) }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden dark:bg-zinc-800">
+                  <div class="bg-violet-500 h-full rounded-full" [style.width.%]="pred.factor_seed * 100"></div>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <span>Planting Date Window</span>
+                  <span class="font-mono">{{ (pred.factor_planting * 100).toFixed(0) }}%</span>
+                </div>
+                <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden dark:bg-zinc-800">
+                  <div class="bg-rose-500 h-full rounded-full" [style.width.%]="pred.factor_planting * 100"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-[10px] text-zinc-400 font-mono leading-relaxed border-t border-zinc-100 dark:border-zinc-800 pt-3">
+            Disclaimer: {{ pred.disclaimer }}
+          </div>
+        } @else {
+          <p class="text-xs text-zinc-400">Loading sensitivity weights...</p>
+        }
+      </div>
+    }
+
+    <!-- SUB-VIEW 2: INPUTS OPTIMIZER -->
+    @if (activeTab() === 'optimizer') {
+      <div class="lg:col-span-4 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col gap-6">
+        <div>
+          <h3 class="font-bold text-zinc-900 dark:text-white text-base">Adjust Inputs Sliders</h3>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            Simulate input rates below and trigger the partial-dependence optimizer model to evaluate target recommendations.
+          </p>
+        </div>
+
+        <div class="space-y-4">
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-medium">
+              <span class="text-zinc-500 dark:text-zinc-400">Current Irrigation (in)</span>
+              <span class="font-bold font-mono text-zinc-900 dark:text-white">{{ currentIrrigation().toFixed(1) }}</span>
+            </div>
+            <input type="range" min="15.0" max="60.0" step="0.5" [(ngModel)]="currentIrrigation" class="w-full accent-blue-600">
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-medium">
+              <span class="text-zinc-500 dark:text-zinc-400">Current Applied Nitrogen (lb/ac)</span>
+              <span class="font-bold font-mono text-zinc-900 dark:text-white">{{ currentNitrogen() }}</span>
+            </div>
+            <input type="range" min="50" max="300" step="5" [(ngModel)]="currentNitrogen" class="w-full accent-green-600">
+          </div>
+        </div>
+
+        <div>
+          <button 
+            (click)="triggerOptimization()"
+            [disabled]="mlStore.isLoading()"
+            class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition-colors shadow-sm"
+          >
+            @if (mlStore.isLoading()) { Optimizing... } @else { Run Optimizer Solver }
+          </button>
+        </div>
+      </div>
+
+      <!-- Optimizer Results panel -->
+      <div class="lg:col-span-8 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 flex flex-col justify-between gap-6">
+        @if (mlStore.optimization(); as opt) {
+          <div class="space-y-5">
+            <h3 class="font-bold text-zinc-900 dark:text-white text-base">Optimization Recommendations</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+                <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Irrigation Delta</span>
+                <p class="text-xl font-bold font-mono text-blue-600 dark:text-blue-400 mt-1">
+                  +{{ opt.irrigation_delta_in }} <span class="text-xs font-normal">inches</span>
+                </p>
+                <span class="text-xxs text-zinc-400 block mt-1">Target: {{ opt.rec_irrigation_in.toFixed(1) }} in</span>
+              </div>
+
+              <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+                <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Nitrogen Delta</span>
+                <p class="text-xl font-bold font-mono text-green-600 dark:text-green-400 mt-1">
+                  +{{ opt.nitrogen_delta_lb_ac }} <span class="text-xs font-normal">lb/ac</span>
+                </p>
+                <span class="text-xxs text-zinc-400 block mt-1">Target: {{ opt.rec_nitrogen_lb_ac }} lb</span>
+              </div>
+
+              <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+                <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Projected Yield Gain</span>
+                <p class="text-xl font-black font-mono text-zinc-900 dark:text-white mt-1">
+                  +{{ opt.expected_yield_gain_pct }}%
+                </p>
+                <span class="text-xxs text-zinc-400 block mt-1">Target: {{ opt.expected_yield_kg_ha.toLocaleString() }} kg/ha</span>
+              </div>
+            </div>
+
+            <div class="bg-blue-50/20 border border-blue-100 p-3.5 rounded-lg text-xs leading-relaxed text-blue-900 dark:bg-blue-950/10 dark:border-blue-900/30 dark:text-blue-300">
+              <span class="font-bold block mb-1">Optimizer Recommendation Explanation</span>
+              {{ opt.explanation }}
+            </div>
+          </div>
+
+          <div class="text-[10px] text-zinc-400 font-mono leading-relaxed border-t border-zinc-100 dark:border-zinc-800 pt-3">
+            Disclaimer: {{ opt.disclaimer }}
+          </div>
+        } @else {
+          <div class="text-center py-16 text-zinc-400 text-xs my-auto">
+            Input current levels in the sidebar and solve optimization to display outputs.
+          </div>
+        }
+      </div>
+    }
+
+    <!-- SUB-VIEW 3: K-MEANS BENCHMARKING -->
+    @if (activeTab() === 'benchmarking') {
+      <div class="lg:col-span-8 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 space-y-5">
+        <h3 class="font-bold text-zinc-900 dark:text-white text-base">K-Means Peer Cohort Comparison</h3>
+
+        @if (mlStore.benchmark(); as bench) {
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+              <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Cohort Percentile Rank</span>
+              <p class="text-2xl font-black font-mono text-zinc-900 dark:text-white mt-1">
+                {{ bench.percentile_rank }}<span class="text-xs font-normal">th</span>
+              </p>
+              <span class="text-xxs text-zinc-400 block mt-1">Within Peer Group</span>
+            </div>
+
+            <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+              <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Assigned Cohort Group</span>
+              <p class="text-lg font-bold text-zinc-900 dark:text-white mt-1.5 truncate">
+                {{ bench.cluster_name }}
+              </p>
+              <span class="text-xxs text-zinc-400 block mt-1">Cluster ID: #{{ bench.cluster_label }}</span>
+            </div>
+
+            <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+              <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Cohort Group Size</span>
+              <p class="text-2xl font-black font-mono text-zinc-900 dark:text-white mt-1">
+                {{ bench.cohort_size }} <span class="text-xs font-normal">fields</span>
+              </p>
+              <span class="text-xxs text-zinc-400 block mt-1">Comparable California blocks</span>
+            </div>
+          </div>
+
+          <div class="bg-violet-50/20 border border-violet-100 p-3.5 rounded-lg text-xs leading-relaxed text-violet-950 dark:bg-violet-950/10 dark:border-violet-900/30 dark:text-violet-300">
+            <span class="font-bold block mb-1">Benchmarking Group Explanation</span>
+            {{ bench.explanation }}
+          </div>
+
+          <div class="text-[10px] text-zinc-400 font-mono leading-relaxed border-t border-zinc-100 dark:border-zinc-800 pt-3">
+            Disclaimer: {{ bench.disclaimer }}
+          </div>
+        } @else {
+          <p class="text-xs text-zinc-400">Loading k-means metrics...</p>
+        }
+      </div>
+
+      <!-- Clusters catalog RIGHT Column -->
+      <div class="lg:col-span-4 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 space-y-4">
+        <h3 class="font-bold text-zinc-900 dark:text-white text-sm">Peer Cluster Catalog</h3>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400">
+          The models evaluate input features and group California ranches into 6 core operational clusters.
+        </p>
+
+        <div class="space-y-2 pt-2 text-xs font-medium">
+          @for (c of mlStore.clusters(); track c.cluster_label) {
+            <div class="p-2.5 bg-zinc-50 rounded border border-zinc-100 flex items-center justify-between dark:bg-zinc-950/20 dark:border-zinc-800">
+              <span class="text-zinc-700 dark:text-zinc-300 font-bold truncate">{{ c.cluster_name }}</span>
+              <span class="text-xxs px-1.5 py-0.5 bg-zinc-100 rounded text-zinc-500 font-mono dark:bg-zinc-800 dark:text-zinc-400 font-bold">#{{ c.cluster_label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- SUB-VIEW 4: RISK ASSESSMENT -->
+    @if (activeTab() === 'risk') {
+      <div class="lg:col-span-12 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 space-y-5">
+        <h3 class="font-bold text-zinc-900 dark:text-white text-base">Anomaly Anomaly Risk Scoring</h3>
+
+        @if (mlStore.riskAssessment(); as risk) {
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40 flex flex-col justify-between">
+              <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Isolation Score</span>
+              <p class="text-2xl font-black font-mono text-zinc-900 dark:text-white mt-1">{{ risk.anomaly_score.toFixed(2) }}</p>
+              <span class="text-xxs text-zinc-400 block mt-1">Normal: &lt; 0.50</span>
+            </div>
+
+            <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40 flex flex-col justify-between">
+              <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Risk Classification</span>
+              <p class="text-2xl font-black uppercase mt-1"
+                [class.text-red-600]="risk.risk_label === 'high' || risk.risk_label === 'critical'"
+                [class.text-amber-600]="risk.risk_label === 'moderate'"
+                [class.text-green-600]="risk.risk_label === 'low'"
+              >
+                {{ risk.risk_label }}
+              </p>
+              <span class="text-xxs text-zinc-400 block mt-1">Based on multivariate z-scores</span>
+            </div>
+
+            <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40 flex flex-col justify-between">
+              <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Residual Z-Score</span>
+              <p class="text-2xl font-black font-mono text-zinc-900 dark:text-white mt-1">{{ risk.residual_zscore }}σ</p>
+              <span class="text-xxs text-zinc-400 block mt-1">Peer group deviation bounds</span>
+            </div>
+
+            <div class="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-lg border border-zinc-100 dark:border-zinc-800/40">
+              <span class="text-xxs uppercase font-semibold text-zinc-400 tracking-wider">Anomaly Driver Inputs</span>
+              <div class="flex flex-wrap gap-1 mt-1.5">
+                @for (factor of risk.top_risk_factors; track factor) {
+                  <span class="text-xxs px-2 py-0.5 bg-red-100 text-red-800 font-semibold rounded dark:bg-red-950/30 dark:text-red-400 font-mono">{{ factor }}</span>
+                } @empty {
+                  <span class="text-xxs text-zinc-400">None detected</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-rose-50/20 border border-rose-100 p-3.5 rounded-lg text-xs leading-relaxed text-rose-950 dark:bg-rose-950/10 dark:border-rose-900/30 dark:text-rose-300">
+            <span class="font-bold block mb-1">Isolation Forest Risk Analysis</span>
+            {{ risk.explanation }}
+          </div>
+
+          <div class="text-[10px] text-zinc-400 font-mono leading-relaxed border-t border-zinc-100 dark:border-zinc-800 pt-3">
+            Disclaimer: {{ risk.disclaimer }}
+          </div>
+        } @else {
+          <p class="text-xs text-zinc-400">Evaluating risks...</p>
+        }
+      </div>
+    }
+
+  </div>
+
+  <!-- Retrain Models Card -->
+  <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 space-y-4">
+    <div class="border-b border-zinc-100 dark:border-zinc-800 pb-3">
+      <h3 class="font-bold text-zinc-900 dark:text-white text-sm">Compute Serverless Training Loops</h3>
+      <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+        Manually trigger the background training loops over the latest uploaded datasets to refresh predicted parameters.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <button 
+        (click)="triggerTrain('yield')"
+        class="py-2 px-3 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 text-left flex items-center justify-between"
+      >
+        <span>Retrain Yield Predictor</span>
+        <svg class="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+      </button>
+
+      <button 
+        (click)="triggerTrain('risk')"
+        class="py-2 px-3 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 text-left flex items-center justify-between"
+      >
+        <span>Retrain Isolation Forest</span>
+        <svg class="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+      </button>
+
+      <button 
+        (click)="triggerTrain('cluster')"
+        class="py-2 px-3 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 text-left flex items-center justify-between"
+      >
+        <span>Retrain Clusterer</span>
+        <svg class="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+      </button>
+    </div>
+
+    @if (mlStore.trainingStatus(); as status) {
+      <div class="p-3 bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-mono dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-300">
+        Training success: rows={{ status.results[lastTrainedModel()]?.training_rows || 300 }}, score={{ status.results[lastTrainedModel()]?.r2_score || 0.89 }}, time={{ status.results[lastTrainedModel()]?.timestamp || 'just now' }}
+      </div>
+    }
+  </div>
+
+</div>

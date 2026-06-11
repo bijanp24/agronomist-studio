@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { forkJoin } from 'rxjs';
 import { RanchStore } from '../../core/store/ranch.store';
 import { FieldStore } from '../../core/store/field.store';
+import { WaterStore } from '../../core/store/water.store';
 import { WaterApi } from '../../core/services/api/water.api';
 import { ToastService } from '../../shared/services/toast/toast.service';
 import { WeatherSnapshot, IrrigationEvent, SoilMoistureReading, Field } from 'shared';
@@ -32,6 +33,7 @@ export interface FormattedIrrigationEvent extends IrrigationEvent {
   templateUrl: './water.html'
 })
 export default class WaterPage implements OnInit {
+  protected readonly waterStore = inject(WaterStore);
   protected readonly ranchStore = inject(RanchStore);
   protected readonly fieldStore = inject(FieldStore);
   private readonly waterApi = inject(WaterApi);
@@ -39,10 +41,10 @@ export default class WaterPage implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   // Loading/cache states
-  protected readonly weatherSnapshots = signal<WeatherSnapshot[]>([]);
-  protected readonly rawIrrigationEvents = signal<IrrigationEvent[]>([]);
-  protected readonly soilMoistureReadings = signal<SoilMoistureReading[]>([]);
-  protected readonly loading = signal<boolean>(false);
+  protected readonly weatherSnapshots = this.waterStore.weatherSnapshots;
+  protected readonly rawIrrigationEvents = this.waterStore.irrigationEvents;
+  protected readonly soilMoistureReadings = this.waterStore.soilMoistureReadings;
+  protected readonly loading = this.waterStore.isLoading;
 
   // Interactive sensor states
   protected readonly selectedMoistureFieldId = signal<string>('');
@@ -82,36 +84,13 @@ export default class WaterPage implements OnInit {
   }
 
   private loadWaterTelemetry(ranchId: string | null) {
-    this.loading.set(true);
+    this.waterStore.loadWaterTelemetry(ranchId);
 
-    const weather$ = this.waterApi.getWeather(ranchId || undefined);
-    const irrigation$ = this.waterApi.getIrrigationEvents();
-    const moisture$ = this.waterApi.getSoilMoisture();
-
-    forkJoin({
-      weather: weather$,
-      irrigation: irrigation$,
-      moisture: moisture$
-    }).subscribe({
-      next: (res) => {
-        this.weatherSnapshots.set(res.weather);
-        this.rawIrrigationEvents.set(res.irrigation);
-        this.soilMoistureReadings.set(res.moisture);
-
-        // Pre-select first field for moisture probe profile
-        const fields = this.fieldStore.fields();
-        if (fields.length > 0 && !this.selectedMoistureFieldId()) {
-          this.selectedMoistureFieldId.set(fields[0].id);
-        }
-
-        this.loading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to load water operations logs', err);
-        this.toastService.danger('Failed to sync water sensors. Please reload page.');
-        this.loading.set(false);
-      }
-    });
+    // Pre-select first field for moisture probe profile
+    const fields = this.fieldStore.fields();
+    if (fields.length > 0 && !this.selectedMoistureFieldId()) {
+      this.selectedMoistureFieldId.set(fields[0].id);
+    }
   }
 
   // --- Dynamic calculations computations ---
@@ -238,10 +217,9 @@ export default class WaterPage implements OnInit {
     const newStatus: IrrigationEvent['status'] = event.status === 'active' ? 'completed' : 'active';
     
     this.waterApi.updateIrrigationEvent(event.id, { status: newStatus }).subscribe({
-      next: () => {
+      next: (updatedEvent) => {
         this.toastService.success(`Irrigation flow state updated on ${event.fieldName || 'Field'}. Sensors refreshed.`);
-        const ranchId = this.ranchStore.selectedRanchId();
-        this.loadWaterTelemetry(ranchId);
+        this.waterStore.updateIrrigationEvent(updatedEvent);
       },
       error: () => {
         this.toastService.danger('Failed to toggle valve actuator. Retry operation.');
@@ -319,13 +297,10 @@ export default class WaterPage implements OnInit {
     };
 
     this.waterApi.createIrrigationEvent(payload).subscribe({
-      next: () => {
+      next: (newEvent) => {
         this.toastService.success(`New irrigation cycle scheduled for ${field.name}! Water ledger logged.`);
         this.closeScheduleModal();
-        
-        // Refresh local cache list
-        const ranchId = this.ranchStore.selectedRanchId();
-        this.loadWaterTelemetry(ranchId);
+        this.waterStore.addIrrigationEvent(newEvent);
       },
       error: (err) => {
         console.error('Failed to create water event', err);

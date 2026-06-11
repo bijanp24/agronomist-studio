@@ -254,6 +254,120 @@
           </div>
         </div>
 
+        <!-- Live California Agronomy Insights & CIMIS Recommendations -->
+        <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4 dark:bg-zinc-900 dark:border-zinc-800">
+          <div class="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+            <div>
+              <h3 class="font-extrabold text-sm text-zinc-900 dark:text-white flex items-center gap-1.5">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live Agronomic Summary
+              </h3>
+              <p class="text-[10px] text-zinc-400 font-medium mt-0.5">Real-time California GIS Gateway</p>
+            </div>
+            @if (selectedAgronomySummary(); as summary) {
+              <app-badge [type]="summary.irrigation?.confidence === 'high' ? 'success' : (summary.irrigation?.confidence === 'medium' ? 'warning' : 'danger')">
+                {{ summary.irrigation?.confidence }} confidence
+              </app-badge>
+            }
+          </div>
+
+          @if (agronomyLoading()) {
+            <div class="space-y-3">
+              <app-skeleton type="text" />
+              <app-skeleton type="text" />
+            </div>
+          } @else if (agronomyError()) {
+            <div class="p-3.5 bg-rose-50 border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40 rounded-lg text-xs text-rose-600 dark:text-rose-400 font-medium leading-relaxed flex items-center gap-2">
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>{{ agronomyError() }}</span>
+            </div>
+          } @else if (selectedAgronomySummary(); as summary) {
+            <div class="space-y-3.5">
+              <!-- Live CIMIS Reference ET & NRCS Soil Info -->
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                @if (summary.evapotranspiration; as eto) {
+                  <div class="p-3 bg-sky-50/40 dark:bg-sky-950/10 border border-sky-100/50 dark:border-sky-900/20 rounded-lg">
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+                      <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5m0 15V21m-9-9h1.5m15 0H21m-1.414-6.586l-1.06 1.06M6.48 16.48l-1.06 1.06m0-10.6l1.06 1.06m10.6 10.6l1.06-1.06M12 8.25a4.25 4.25 0 100 8.5 4.25 4.25 0 000-8.5z" />
+                      </svg>
+                      CIMIS ETo
+                    </div>
+                    <span class="text-base font-extrabold text-zinc-900 dark:text-white mt-1.5 block">{{ eto.eto }} in/day</span>
+                    <span class="text-[9px] text-zinc-400 block mt-0.5 truncate" [title]="eto.stationName">{{ eto.stationName || 'Fresno' }} station</span>
+                  </div>
+                }
+                @if (summary.soil; as soil) {
+                  <div class="p-3 bg-amber-50/40 dark:bg-amber-950/10 border border-amber-100/50 dark:border-amber-900/20 rounded-lg">
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                      <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.003 9.003 0 008.34-5.66l-1.61-.4a7.5 7.5 0 11-13.46 0l-1.61.4A9.003 9.003 0 0012 21z" />
+                      </svg>
+                      NRCS Soil
+                    </div>
+                    <span class="text-base font-extrabold text-zinc-900 dark:text-white mt-1.5 block capitalize truncate" [title]="soil.texture">{{ soil.texture }}</span>
+                    <span class="text-[9px] text-zinc-400 block mt-0.5">AWC: {{ soil.availableWaterCapacity }} in/in</span>
+                  </div>
+                }
+              </div>
+
+              <!-- Irrigation Recommendation detail -->
+              @if (summary.irrigation; as irr) {
+                <div class="bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3 text-xs space-y-2">
+                  <div class="flex justify-between items-center text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
+                    <span>Irrigation Recipe</span>
+                    <span class="text-emerald-600 dark:text-emerald-400">Crop Kc: {{ irr.kc }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-zinc-500 font-medium">Daily Crop Demand (ETc)</span>
+                    <span class="font-extrabold text-zinc-900 dark:text-white">{{ irr.cropEt }} inches</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-zinc-500 font-medium">Net Recommended Depth</span>
+                    <span class="font-extrabold text-zinc-900 dark:text-white">{{ irr.netIrrigationIn }} inches</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-zinc-500 font-medium">Gross Applied Depth ({{ Math.round(irr.systemEfficiency * 100) }}%)</span>
+                    <span class="font-extrabold text-emerald-600 dark:text-emerald-400">{{ irr.grossIrrigationIn }} inches</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-zinc-500 font-medium">Watering Interval</span>
+                    <span class="font-extrabold text-zinc-900 dark:text-white">Every {{ irr.intervalDays }} Days</span>
+                  </div>
+                </div>
+
+                @if (irr.notes && irr.notes.length > 0) {
+                  <div class="space-y-1.5">
+                    <h4 class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Advisory Actions</h4>
+                    <ul class="text-[11px] text-zinc-500 dark:text-zinc-400 space-y-1 pl-3.5 list-disc leading-relaxed">
+                      @for (note of irr.notes; track note) {
+                        <li>{{ note }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+              }
+
+              <!-- Warnings if any service degraded -->
+              @if (summary.warnings; as warnings) {
+                <div class="p-2.5 bg-amber-50/50 border border-amber-100/50 dark:bg-amber-950/10 dark:border-amber-900/30 rounded-lg text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium space-y-1">
+                  <div class="flex items-center gap-1 font-bold uppercase tracking-wider text-amber-800 dark:text-amber-500">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Data Degraded Warnings
+                  </div>
+                  @for (warning of warnings | keyvalue; track warning.key) {
+                    <div>&bull; <span class="capitalize font-bold">{{ warning.key }}</span>: {{ warning.value }}</div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
         <!-- Nitrogen Plan & Fertilizer Budget Card -->
         @if (selectedNitrogenPlan(); as plan) {
           <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm space-y-4 dark:bg-zinc-900 dark:border-zinc-800">

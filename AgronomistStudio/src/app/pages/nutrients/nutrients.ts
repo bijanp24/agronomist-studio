@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { forkJoin } from 'rxjs';
 import { RanchStore } from '../../core/store/ranch.store';
 import { FieldStore } from '../../core/store/field.store';
+import { NutrientsStore } from '../../core/store/nutrients.store';
 import { NutrientsApi } from '../../core/services/api/nutrients.api';
 import { ToastService } from '../../shared/services/toast/toast.service';
 import { SoilSample, TissueSample, NitrogenPlan, Field } from 'shared';
@@ -41,6 +42,7 @@ export interface FormattedNitrogenPlan extends NitrogenPlan {
   templateUrl: './nutrients.html'
 })
 export default class NutrientsPage implements OnInit {
+  protected readonly nutrientsStore = inject(NutrientsStore);
   protected readonly ranchStore = inject(RanchStore);
   protected readonly fieldStore = inject(FieldStore);
   private readonly nutrientsApi = inject(NutrientsApi);
@@ -48,10 +50,10 @@ export default class NutrientsPage implements OnInit {
   private readonly fb = inject(FormBuilder);
 
   // API datasets cached state signals
-  protected readonly soilSamples = signal<SoilSample[]>([]);
-  protected readonly tissueSamples = signal<TissueSample[]>([]);
-  protected readonly nitrogenPlans = signal<NitrogenPlan[]>([]);
-  protected readonly loading = signal<boolean>(false);
+  protected readonly soilSamples = this.nutrientsStore.soilSamples;
+  protected readonly tissueSamples = this.nutrientsStore.tissueSamples;
+  protected readonly nitrogenPlans = this.nutrientsStore.nitrogenPlans;
+  protected readonly loading = this.nutrientsStore.isLoading;
 
   // Log Form states
   protected nutrientForm!: FormGroup;
@@ -98,29 +100,7 @@ export default class NutrientsPage implements OnInit {
   }
 
   private loadNutrientsTelemetry(ranchId: string | null) {
-    this.loading.set(true);
-
-    const soil$ = this.nutrientsApi.getSoilSamples();
-    const tissue$ = this.nutrientsApi.getTissueSamples();
-    const nitrogen$ = this.nutrientsApi.getNitrogenPlans();
-
-    forkJoin({
-      soil: soil$,
-      tissue: tissue$,
-      nitrogen: nitrogen$
-    }).subscribe({
-      next: (res) => {
-        this.soilSamples.set(res.soil);
-        this.tissueSamples.set(res.tissue);
-        this.nitrogenPlans.set(res.nitrogen);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to sync laboratory records', err);
-        this.toastService.danger('Failed to sync laboratory analytical sheets. Please reload page.');
-        this.loading.set(false);
-      }
-    });
+    this.nutrientsStore.loadNutrientsTelemetry(ranchId);
   }
 
   // --- Dynamic Search & Filter computations ---
@@ -229,18 +209,11 @@ export default class NutrientsPage implements OnInit {
     const slider = event.target as HTMLInputElement;
     const value = parseInt(slider.value) || 0;
 
-    // Dynamically adjust NMP state locally to model balanced Nitrogen curves
-    this.nitrogenPlans.update(list => {
-      return list.map(item => {
-        if (item.id === plan.id) {
-          return {
-            ...item,
-            creditsResidualN_lbsPerAcre: value
-          };
-        }
-        return item;
-      });
-    });
+    const updatedPlan = {
+      ...plan,
+      creditsResidualN_lbsPerAcre: value
+    };
+    this.nutrientsStore.updateNitrogenPlan(updatedPlan);
   }
 
   // --- Dynamic Form Creation ---
@@ -295,7 +268,8 @@ export default class NutrientsPage implements OnInit {
     const cat = formVal.category;
 
     if (cat === 'soil') {
-      const payload: Omit<SoilSample, 'id'> = {
+      const payload: SoilSample = {
+        id: 'soil-' + Math.random().toString(36).substring(2, 9),
         fieldId: formVal.fieldId,
         sampleDate: formVal.sampleDate,
         labSampleNumber: formVal.labSampleNumber,
@@ -307,11 +281,11 @@ export default class NutrientsPage implements OnInit {
         status: formVal.soilN < 10 ? 'low' : (formVal.soilN > 30 ? 'high' : 'optimal')
       };
 
-      // Simulate soil core saving locally
-      this.soilSamples.update(list => [payload as SoilSample, ...list]);
+      this.nutrientsStore.addSoilSample(payload);
       this.toastService.success(`Soil Mineral analysis submitted! Indices recalculated for Field Block.`);
     } else {
-      const payload: Omit<TissueSample, 'id'> = {
+      const payload: TissueSample = {
+        id: 'tissue-' + Math.random().toString(36).substring(2, 9),
         fieldId: formVal.fieldId,
         sampleDate: formVal.sampleDate,
         nitrogenPct: formVal.tissueN,
@@ -321,8 +295,7 @@ export default class NutrientsPage implements OnInit {
         status: formVal.tissueZn < 20 ? 'deficient' : (formVal.tissueZn > 45 ? 'excessive' : 'adequate')
       };
 
-      // Simulate tissue core saving locally
-      this.tissueSamples.update(list => [payload as TissueSample, ...list]);
+      this.nutrientsStore.addTissueSample(payload);
       this.toastService.success(`Foliar Crop Tissue assay logged! Deficiency diagnostics generated.`);
     }
 
