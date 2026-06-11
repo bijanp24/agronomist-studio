@@ -23,6 +23,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/ml-insights/ml-insights')
   },
   {
+    path: 'upload',
+    loadComponent: () => import('./pages/upload/upload')
+  },
+  {
     path: 'scouting',
     loadComponent: () => import('./pages/scouting/scouting')
   },

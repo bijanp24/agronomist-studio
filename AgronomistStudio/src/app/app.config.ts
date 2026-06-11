@@ -44,6 +44,10 @@ import { HttpSpatialService } from './core/services/api/http/http-spatial.servic
 import { InMemoryMlService } from './core/services/api/in-memory/in-memory-ml.service';
 import { HttpMlService } from './core/services/api/http/http-ml.service';
 
+import { TransferApi } from './core/services/api/transfer.api';
+import { InMemoryTransferService } from './core/services/api/in-memory/in-memory-transfer.service';
+import { HttpTransferService } from './core/services/api/http/http-transfer.service';
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -86,6 +90,10 @@ export const appConfig: ApplicationConfig = {
     {
       provide: MlApi,
       useClass: environment.dataSource === 'http' ? HttpMlService : InMemoryMlService
+    },
+    {
+      provide: TransferApi,
+      useClass: environment.dataSource === 'http' ? HttpTransferService : InMemoryTransferService
     }
   ]
 };
