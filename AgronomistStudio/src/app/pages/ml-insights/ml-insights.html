@@ -518,7 +518,7 @@
 
     @if (mlStore.trainingStatus(); as status) {
       <div class="p-3 bg-zinc-50 border border-zinc-200 rounded-lg text-xs font-mono dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-300">
-        Training success: rows={{ status.results[mtype]?.training_rows || 300 }}, score={{ status.results[mtype]?.r2_score || 0.89 }}, time={{ status.results[mtype]?.timestamp || 'just now' }}
+        Training success: rows={{ status.results[lastTrainedModel()]?.training_rows || 300 }}, score={{ status.results[lastTrainedModel()]?.r2_score || 0.89 }}, time={{ status.results[lastTrainedModel()]?.timestamp || 'just now' }}
       </div>
     }
   </div>

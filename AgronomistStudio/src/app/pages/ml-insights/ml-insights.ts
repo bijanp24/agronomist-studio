@@ -27,6 +27,9 @@ export default class MlInsightsPage implements OnInit {
   // Selected sub-tab
   protected readonly activeTab = signal<'yield' | 'optimizer' | 'benchmarking' | 'risk'>('yield');
 
+  // Last trained model type
+  protected readonly lastTrainedModel = signal<'yield' | 'risk' | 'cluster'>('yield');
+
   // Trigger loading details whenever selected field changes
   constructor() {
     effect(() => {
@@ -81,6 +84,7 @@ export default class MlInsightsPage implements OnInit {
   }
 
   protected triggerTrain(mtype: 'yield' | 'risk' | 'cluster') {
+    this.lastTrainedModel.set(mtype);
     this.mlStore.trainModel(mtype);
   }
 

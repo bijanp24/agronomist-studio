@@ -6,18 +6,14 @@ import { TransferStore } from '../../core/store/transfer.store';
 import { RanchStore } from '../../core/store/ranch.store';
 import { FieldStore } from '../../core/store/field.store';
 import { ToastService } from '../../shared/services/toast/toast.service';
-import { BadgeComponent, DataTableComponent } from '../../shared';
-import { ColumnMapping, ImportSession, ValidationError } from 'shared';
+import { ColumnMapping } from 'shared';
 
 @Component({
   selector: 'app-upload',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
-    ReactiveFormsModule,
-    BadgeComponent,
-    DataTableComponent
+    ReactiveFormsModule
   ],
   templateUrl: './upload.html'
 })
@@ -122,7 +118,7 @@ export default class UploadPage {
     } else if (extension === 'json' || extension === 'geojson') {
       this.fileType.set('geojson');
     } else {
-      this.toastService.showError('Invalid file type', 'Please upload a CSV or GeoJSON file.');
+      this.toastService.danger('Invalid file type: Please upload a CSV or GeoJSON file.');
       this.resetFile();
       return;
     }
@@ -131,14 +127,14 @@ export default class UploadPage {
     reader.onload = (e) => {
       const text = e.target?.result as string;
       this.fileContent.set(text);
-      this.toastService.showSuccess('File loaded', `${file.name} is ready for processing.`);
+      this.toastService.success(`File loaded: ${file.name} is ready for processing.`);
       
       if (this.fileType() === 'csv') {
         this.extractCsvHeaders(text);
       }
     };
     reader.onerror = () => {
-      this.toastService.showError('Read error', 'Could not read the uploaded file.');
+      this.toastService.danger('Read error: Could not read the uploaded file.');
     };
     reader.readAsText(file);
   }
@@ -201,7 +197,7 @@ export default class UploadPage {
     setTimeout(() => {
       const session = this.transferStore.session();
       if (!session) {
-        this.toastService.showError('Session error', 'Could not establish import session on server.');
+        this.toastService.danger('Session error: Could not establish import session on server.');
         return;
       }
 
@@ -231,7 +227,7 @@ export default class UploadPage {
             defaultFarmId: defaultRanchId
           });
         } catch (e) {
-          this.toastService.showError('JSON Error', 'Invalid GeoJSON syntax in uploaded file.');
+          this.toastService.danger('JSON Error: Invalid GeoJSON syntax in uploaded file.');
         }
       }
     }, 600);
@@ -253,14 +249,13 @@ export default class UploadPage {
     setTimeout(() => {
       const report = this.transferStore.commitReport();
       if (report?.success) {
-        this.toastService.showSuccess(
-          'Import Committed',
-          `Successfully processed ${report.created} fields and ${report.operationsAdded} operational logs.`
+        this.toastService.success(
+          `Import Committed: Successfully processed ${report.created} fields and ${report.operationsAdded} operational logs.`
         );
         // Sync central state
-        this.fieldStore.loadFieldsByRanch(defaultRanchId);
+        this.fieldStore.loadFields(defaultRanchId);
       } else {
-        this.toastService.showError('Commit Failed', 'Could not append imported records.');
+        this.toastService.danger('Commit Failed: Could not append imported records.');
       }
     }, 1000);
   }
@@ -280,7 +275,7 @@ export default class UploadPage {
   protected navigateToFields(): void {
     const defaultRanchId = this.uploadForm.value.defaultRanchId;
     if (defaultRanchId) {
-      this.ranchStore.setSelectedRanch(defaultRanchId);
+      this.ranchStore.selectRanch(defaultRanchId);
     }
     this.router.navigate(['/fields']);
   }

@@ -463,7 +463,7 @@
             </div>
 
             <!-- Pooling Sinks Table -->
-            @if (res.outputLayers[1] && res.outputLayers[1].attributes['zones'].length > 0) {
+            @if (poolingZones.length > 0) {
               <div class="space-y-1.5 pt-2">
                 <span class="text-xxs uppercase tracking-wider font-semibold text-zinc-400">Identified Pooling Sinks (Local Minima)</span>
                 <div class="border border-zinc-100 dark:border-zinc-800 rounded-lg overflow-hidden">
@@ -477,7 +477,7 @@
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
-                      @for (zone of res.outputLayers[1].attributes['zones']; track idx; let idx = $index) {
+                      @for (zone of poolingZones; track idx; let idx = $index) {
                         <tr>
                           <td class="p-2">Row {{ zone.row }}, Col {{ zone.col }}</td>
                           <td class="p-2">{{ zone.lat }}, {{ zone.lon }}</td>
@@ -557,7 +557,7 @@
               Cartesian polygon coordinates evaluated via centroid-scaled projection:
             </p>
             <code class="block bg-white border p-1 rounded text-xxs font-mono mt-1 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300">
-              Area = 1/2 |Σ(x_i y_{i+1} - x_{i+1} y_i)|
+              Area = 1/2 |Σ(x_i y_&#123;i+1&#125; - x_&#123;i+1&#125; y_i)|
             </code>
           </div>
 

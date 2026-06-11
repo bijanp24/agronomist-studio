@@ -268,7 +268,7 @@ export default class GisPage implements OnInit, AfterViewInit, OnDestroy {
       if (terrainRes && terrainRes.outputLayers) {
         const slopeLayer = terrainRes.outputLayers.find(l => l.id === 'output-terrain-slope');
         if (slopeLayer && slopeLayer.attributes['points']) {
-          this.visualizeTerrainPoints(slopeLayer.attributes['points']);
+          this.visualizeTerrainPoints(slopeLayer.attributes['points'] as any[]);
         }
       }
     }, 1000);
@@ -319,7 +319,13 @@ export default class GisPage implements OnInit, AfterViewInit, OnDestroy {
   protected get carryingChartSeries(): any[] {
     const res = this.spatialStore.carryingResult();
     if (!res || !res.outputLayers || res.outputLayers.length === 0) return [];
-    return res.outputLayers[0].attributes['series'] || [];
+    return (res.outputLayers[0].attributes['series'] as any[]) || [];
+  }
+
+  protected get poolingZones(): any[] {
+    const res = this.spatialStore.terrainResult();
+    if (!res || !res.outputLayers || res.outputLayers.length < 2) return [];
+    return (res.outputLayers[1].attributes['zones'] as any[]) || [];
   }
 
   // Generate responsive SVG path coordinates for ecological simulation curves

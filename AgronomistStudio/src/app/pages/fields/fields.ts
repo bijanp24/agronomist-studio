@@ -163,7 +163,7 @@ export default class FieldsPage implements AfterViewInit, OnDestroy {
       const bounds = coords.reduce((acc, coord) => {
         return acc.extend(coord as [number, number]);
       }, new maplibregl.LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]));
-      this.map.fitBounds(bounds, { padding: 80, maxZoom: 16 });
+      this.map?.fitBounds(bounds, { padding: 80, maxZoom: 16 });
 
       const midIdx = Math.floor(coords.length / 2);
       lon = coords[midIdx][0];
