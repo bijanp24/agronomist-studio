@@ -1,7 +1,9 @@
 [build]
-  base = "AgronomistStudio"
   command = "npm run build"
   publish = "dist/AgronomistStudio/browser"
 
 [build.environment]
   NODE_VERSION = "24"
+
+[db.migrations]
+  path = "netlify/database/migrations"

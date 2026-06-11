@@ -7,7 +7,9 @@
     "prebuild": "tsc -p ../shared/tsconfig.json",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "netlify database migrations apply"
   },
   "prettier": {
     "printWidth": 100,
@@ -39,7 +41,10 @@
     "@angular/forms": "22.0.0",
     "@angular/platform-browser": "22.0.0",
     "@angular/router": "22.0.0",
+    "@netlify/blobs": "^10.7.9",
+    "@netlify/database": "^1.0.0",
     "@ngrx/signals": "^21.1.1",
+    "drizzle-orm": "^1.0.0-beta.22",
     "maplibre-gl": "^5.24.0",
     "rxjs": "~7.8.0",
     "shared": "file:../shared",
@@ -51,6 +56,7 @@
     "@angular/compiler-cli": "22.0.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@types/geojson": "^7946.0.16",
+    "drizzle-kit": "^1.0.0-beta.22",
     "jsdom": "^27.1.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
