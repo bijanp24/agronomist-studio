@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
 import { RanchStore } from '../../core/store/ranch.store';
 import { FieldStore } from '../../core/store/field.store';
@@ -40,12 +41,14 @@ export default class DashboardPage {
   private readonly scoutingApi = inject(ScoutingApi);
   private readonly pestPcaApi = inject(PestPcaApi);
   private readonly toastService = inject(ToastService);
+  private readonly http = inject(HttpClient);
 
   // Local state signals for API data
   protected readonly weatherSnapshots = signal<WeatherSnapshot[]>([]);
   protected readonly irrigationEvents = signal<IrrigationEvent[]>([]);
   protected readonly scoutingReports = signal<ScoutingReport[]>([]);
   protected readonly sprayRecommendations = signal<SprayRecommendation[]>([]);
+  protected readonly jobRuns = signal<any[]>([]);
   protected readonly dashboardLoading = signal<boolean>(false);
 
   // Modal Slide-over states
@@ -101,6 +104,11 @@ export default class DashboardPage {
         this.toastService.danger('Failed to load ranch dashboard data. Please reload.');
         this.dashboardLoading.set(false);
       }
+    });
+
+    this.http.get<any[]>('/api/jobs/runs').subscribe({
+      next: (runs) => this.jobRuns.set(runs),
+      error: (err) => console.error('Failed to load job runs', err)
     });
   }
 
