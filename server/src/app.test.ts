@@ -143,6 +143,81 @@ describe('Express API Server Tests', () => {
     });
   });
 
+  describe('GET /api/agronomy/* (Agronomy Gateway Integration Tests)', () => {
+    const lat = 36.7782;
+    const lon = -119.4179; // Fresno, CA coordinates
+
+    it('should return 200 OK and Location Summary for valid coordinates', async () => {
+      const res = await request(app)
+        .get(`/api/agronomy/location-summary?lat=${lat}&lon=${lon}&crop=Almonds&no_delay=true`);
+      
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('location');
+      expect(res.body.location).toHaveProperty('latitude', lat);
+      expect(res.body.location).toHaveProperty('longitude', lon);
+      expect(res.body).toHaveProperty('resolvedAt');
+      // soil and waterQuality are fetched via public services, so they should be present
+      expect(res.body).toHaveProperty('soil');
+    });
+
+    it('should return 400 Validation Error if lat/lon are missing or out of bounds', async () => {
+      const res = await request(app)
+        .get('/api/agronomy/location-summary?no_delay=true');
+      
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error', 'Validation Error');
+    });
+
+    it('should return 200 OK for POST /api/agronomy/search with body payload', async () => {
+      const res = await request(app)
+        .post('/api/agronomy/search?no_delay=true')
+        .send({
+          latitude: lat,
+          longitude: lon,
+          cropName: 'Almonds',
+          systemEfficiency: 0.85
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('location');
+    });
+
+    it('should return 200 OK and Irrigation Recommendation', async () => {
+      const res = await request(app)
+        .get(`/api/agronomy/irrigation-recommendation?lat=${lat}&lon=${lon}&crop=Almonds&efficiency=0.85&no_delay=true`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('eto');
+      expect(res.body).toHaveProperty('kc');
+      expect(res.body).toHaveProperty('netIrrigationIn');
+      expect(res.body).toHaveProperty('grossIrrigationIn');
+    });
+
+    it('should return 200 OK and Soil Water Balance', async () => {
+      const res = await request(app)
+        .get(`/api/agronomy/soil-water-balance?lat=${lat}&lon=${lon}&no_delay=true`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('location');
+      expect(res.body).toHaveProperty('availableWaterCapacity');
+      expect(res.body).toHaveProperty('totalAvailableWaterIn');
+      expect(res.body).toHaveProperty('projectedDeficitIn');
+    });
+
+    it('should return 200 OK and Risk Summary', async () => {
+      const res = await request(app)
+        .get(`/api/agronomy/risk-summary?lat=${lat}&lon=${lon}&no_delay=true`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('location');
+      expect(res.body).toHaveProperty('heatRisk');
+      expect(res.body).toHaveProperty('droughtStress');
+      expect(res.body).toHaveProperty('waterQualityConcern');
+      expect(res.body).toHaveProperty('notes');
+      expect(Array.isArray(res.body.notes)).toBe(true);
+    });
+  });
+
   describe('404 Not Found handling', () => {
     it('should return 404 and structured error for non-existent route', async () => {
       const res = await request(app).get('/api/invalid-route-name?no_delay=true');

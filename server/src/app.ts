@@ -7,6 +7,7 @@ import waterRouter from './routes/water.routes';
 import pestRouter from './routes/pest.routes';
 import nutrientsRouter from './routes/nutrients.routes';
 import planningRouter from './routes/planning.routes';
+import agronomyRouter from './routes/agronomy.routes';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware';
 
 const app = express();
@@ -55,6 +56,7 @@ app.use('/api', waterRouter);
 app.use('/api', pestRouter);
 app.use('/api', nutrientsRouter);
 app.use('/api', planningRouter);
+app.use('/api', agronomyRouter);
 
 // --- ERROR HANDLING MIDDLEWARE ---
 app.use(notFoundHandler);

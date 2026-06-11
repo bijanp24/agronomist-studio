@@ -113,3 +113,23 @@ export const createPesticideUseReportSchema = z.object({
   treatedAcres: z.number().positive('Treated acres must be positive'),
   status: z.enum(['pending-submission', 'submitted']).optional()
 });
+
+// Agronomy Gateway Schemas
+export const agronomyQuerySchema = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lon: z.coerce.number().min(-180).max(180),
+  cropId: z.string().optional(),
+  crop: z.string().optional(),
+  efficiency: z.coerce.number().min(0).max(1).optional(),
+  eto: z.coerce.number().positive().optional()
+});
+
+export const agronomySearchSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  cropId: z.string().optional(),
+  cropName: z.string().optional(),
+  systemEfficiency: z.number().min(0).max(1).optional(),
+  etoOverride: z.number().positive().optional()
+});
+
