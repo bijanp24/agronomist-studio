@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import {
   mockRanches,
   mockFields,
@@ -54,7 +55,7 @@ app.use((req, res, next) => {
 });
 
 // Helper to generate IDs
-const generateId = () => Math.random().toString(36).substring(2, 9);
+const generateId = () => crypto.randomUUID();
 
 // --- API ROUTES ---
 
@@ -84,12 +85,12 @@ app.get('/api/fields/:id', (req, res) => {
 
 app.post('/api/fields', (req, res) => {
   const newField: Field = {
+    ...req.body,
     id: generateId(),
-    createdAt: new Date().toISOString(),
-    ...req.body
+    createdAt: new Date().toISOString()
   };
   fields.push(newField);
-  res.status(211).json(newField);
+  res.status(201).json(newField);
 });
 
 // Scouting
@@ -109,9 +110,9 @@ app.get('/api/scouting-reports/:id', (req, res) => {
 
 app.post('/api/scouting-reports', (req, res) => {
   const newReport: ScoutingReport = {
+    ...req.body,
     id: generateId(),
-    scoutedAt: new Date().toISOString(),
-    ...req.body
+    scoutedAt: new Date().toISOString()
   };
   scoutingReports.push(newReport);
   
@@ -143,9 +144,9 @@ app.get('/api/irrigation-events', (req, res) => {
 
 app.post('/api/irrigation-events', (req, res) => {
   const newEvent: IrrigationEvent = {
-    id: generateId(),
     status: 'scheduled',
-    ...req.body
+    ...req.body,
+    id: generateId()
   };
   irrigationEvents.push(newEvent);
   res.status(201).json(newEvent);
@@ -155,7 +156,8 @@ app.patch('/api/irrigation-events/:id', (req, res) => {
   const event = irrigationEvents.find(ie => ie.id === req.params.id);
   if (!event) return res.status(404).json({ error: 'Irrigation event not found' });
   
-  Object.assign(event, req.body);
+  const { id, ...updates } = req.body;
+  Object.assign(event, updates);
   res.json(event);
 });
 
@@ -186,10 +188,10 @@ app.get('/api/spray-recommendations', (req, res) => {
 
 app.post('/api/spray-recommendations', (req, res) => {
   const newRec: SprayRecommendation = {
-    id: generateId(),
-    createdAt: new Date().toISOString(),
     status: 'draft',
-    ...req.body
+    ...req.body,
+    id: generateId(),
+    createdAt: new Date().toISOString()
   };
   sprayRecommendations.push(newRec);
   res.status(201).json(newRec);
@@ -199,7 +201,8 @@ app.patch('/api/spray-recommendations/:id', (req, res) => {
   const rec = sprayRecommendations.find(r => r.id === req.params.id);
   if (!rec) return res.status(404).json({ error: 'Spray recommendation not found' });
   
-  Object.assign(rec, req.body);
+  const { id, createdAt, ...updates } = req.body;
+  Object.assign(rec, updates);
   res.json(rec);
 });
 
@@ -213,9 +216,9 @@ app.get('/api/pesticide-use-reports', (req, res) => {
 
 app.post('/api/pesticide-use-reports', (req, res) => {
   const newPur: PesticideUseReport = {
-    id: generateId(),
     status: 'pending-submission',
-    ...req.body
+    ...req.body,
+    id: generateId()
   };
   pesticideUseReports.push(newPur);
   res.status(201).json(newPur);
