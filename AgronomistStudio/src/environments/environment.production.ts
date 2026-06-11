@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  dataSource: 'http' as 'mock' | 'http'
+  dataSource: 'mock' as 'mock' | 'http'
 };
