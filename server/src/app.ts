@@ -10,6 +10,7 @@ import planningRouter from './routes/planning.routes';
 import agronomyRouter from './routes/agronomy.routes';
 import mlRouter from './routes/ml.routes';
 import spatialRouter from './routes/spatial.routes';
+import { transferRouter } from './routes/transfer.routes';
 import { notFoundHandler, errorHandler } from './middleware/error.middleware';
 
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api', planningRouter);
 app.use('/api', agronomyRouter);
 app.use('/api', mlRouter);
 app.use('/api', spatialRouter);
+app.use('/api', transferRouter);
 
 // --- ERROR HANDLING MIDDLEWARE ---
 app.use(notFoundHandler);
